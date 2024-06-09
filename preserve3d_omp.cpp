@@ -3392,7 +3392,7 @@ int main(int argc, char** argv){
     }
 
     
-    inputfilename = "/global/homes/y/yuxiaoli/msz/experiment_data/"+filename+".bin";
+    inputfilename = "experiment_data/"+filename+".bin";
     
     input_data = getdata2(inputfilename);
     auto min_it = std::min_element(input_data.begin(), input_data.end());
@@ -3404,9 +3404,9 @@ int main(int argc, char** argv){
     
     size2 = input_data.size();
 
-    std::string cpfilename = "/pscratch/sd/y/yuxiaoli/compressed_data/compressed_"+filename+"_"+std::to_string(bound)+".sz";
-    std::string decpfilename = "/pscratch/sd/y/yuxiaoli/decompressed_data/decp_"+filename+"_"+std::to_string(bound)+".bin";
-    std::string fix_path = "/pscratch/sd/y/yuxiaoli/decompressed_data/fixed_decp_"+filename+"_"+std::to_string(bound)+".bin";
+    std::string cpfilename = "compressed_data/compressed_"+filename+"_"+std::to_string(bound)+".sz";
+    std::string decpfilename = "decompressed_data/decp_"+filename+"_"+std::to_string(bound)+".bin";
+    std::string fix_path = "decompressed_data/fixed_decp_"+filename+"_"+std::to_string(bound)+".bin";
     std::string command;
     int result;
     if(compressor_id=="sz3"){
@@ -3421,7 +3421,7 @@ int main(int argc, char** argv){
         }
     }
     else if(compressor_id=="zfp"){
-        cpfilename = "/pscratch/sd/y/yuxiaoli/compressed_data/compressed_"+filename+"_"+std::to_string(bound)+".zfp";
+        cpfilename = "compressed_data/compressed_"+filename+"_"+std::to_string(bound)+".zfp";
         // zfp -i ~/msz/experiment_data/finger.bin -z compressed.zfp -d -r 0.001
         command = "zfp -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -a "+std::to_string(bound)+" -s";
         std::cout << "Executing command: " << command << std::endl;
@@ -3682,8 +3682,11 @@ int main(int argc, char** argv){
         //     get_false_criticle_points();
         start1 = std::chrono::high_resolution_clock::now();
         //     cout<<count_f_max<<", "<<count_f_min<<endl;
-            int cpite = 0;
-
+        int cpite = 0;
+        fixtime_cp = 0.0;
+        std::vector<double> decp_data_copy = decp_data;
+        for(int i=0;i<1000;i++){
+            decp_data = decp_data_copy;
             while (count_f_max>0 or count_f_min>0){
                 cpite+=1;
                 start1 = std::chrono::high_resolution_clock::now();
@@ -3736,11 +3739,24 @@ int main(int argc, char** argv){
                 counter[1]+=1;
         
             }
+        }
+        
         // }
-        // cout<<"1000cifixcp: "<<fixtime_cp<<endl;
+        cout<<"1000cifixcp: "<<fixtime_cp<<endl;
+        std::ofstream outFilep("result/weak_scaling"+filename+"_"+std::to_string(bound)+"_"+compressor_id+".txt", std::ios::app);
+        // 检查文件是否成功打开
+        if (!outFilep) {
+            std::cerr << "Unable to open file for writing." << std::endl;
+            return 1; // 返回错误码
+        }
+        // finddirection:0, getfcp:1,  mappath2, fixcp:3
+        
+        outFilep << std::to_string(number_of_thread)<<":" <<fixtime_cp<< std::endl;
+        // outFilep << "fixtime_cp: "<<fixtime_cp << std::endl;
         // cout<<"1000direction: "<<searchdirection_time<<endl;
         // cout<<"1000getfcp: "<<getfcp<<endl;
         // exit(0);
+        exit(0);
         end = std::chrono::high_resolution_clock::now();
         
         duration = end - start1;
@@ -3925,7 +3941,7 @@ int main(int argc, char** argv){
     std::cout << "getfpath:" << getfpath << std::endl;
     std::cout << "iteration number:" << ite << std::endl;
     exit(0);
-    std::ofstream outFilep("/pscratch/sd/y/yuxiaoli/result/performance2_openmp_1_"+filename+"_"+std::to_string(bound)+"_"+compressor_id+".txt", std::ios::app);
+    std::ofstream outFilep("result/performance2_openmp_1_"+filename+"_"+std::to_string(bound)+"_"+compressor_id+".txt", std::ios::app);
     // 检查文件是否成功打开
     if (!outFilep) {
         std::cerr << "Unable to open file for writing." << std::endl;
@@ -4064,7 +4080,7 @@ int main(int argc, char** argv){
     
     if(mode==1){
         if(bitRate==target_br){
-            std::string path1 ="/pscratch/sd/y/yuxiaoli/decompressed_data/fixed_decp_"+filename+"_"+std::to_string(bound)+"target_"+std::to_string(bitRate)+".bin";
+            std::string path1 ="decompressed_data/fixed_decp_"+filename+"_"+std::to_string(bound)+"target_"+std::to_string(bitRate)+".bin";
             std::ofstream outFile4(path1);
             // std::ofstream outFile("values.bin", std::ios::binary | std::ios::out);
             if (outFile4.is_open()) {
