@@ -3,7 +3,7 @@
 #SBATCH -C cpu
 #SBATCH -q regular
 #SBATCH -t 2:00:00
-#SBATCH -n 1
+#SBATCH -n 2
 #SBATCH -c 128
 #SBATCH --cpus-per-task=128
 
