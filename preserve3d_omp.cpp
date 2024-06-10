@@ -999,7 +999,7 @@ void initializeWithIndex(std::vector<int>& label, std::vector<int> direction_ds,
         }
     }
 }
-voi getlabel1(std::vector<int>& label, int& un_sign_ds, int& un_sign_as, int type=0){
+void getlabel1(std::vector<int>& label, int& un_sign_ds, int& un_sign_as, int type=0){
     std::vector<int> direction_as;
     std::vector<int> direction_ds;
     un_sign_ds = 0;
@@ -3813,7 +3813,7 @@ int main(int argc, char** argv){
         //     cout<<count_f_max<<", "<<count_f_min<<endl;
         int cpite = 0;
         fixtime_cp = 0.0;
-        int log_number = std::log2(thread) + 1;
+        int log_number = std::log2(number_of_thread) + 1;
         std::vector<double> decp_data_copy = decp_data;
         for(int i=0;i<1000;i++){
             decp_data = decp_data_copy;
