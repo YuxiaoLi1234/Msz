@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <stdatomic.h>
+#include <cmath>
 #include <parallel/algorithm>  
 #include <unordered_map>
 #include <random>
@@ -3669,7 +3670,7 @@ int main(int argc, char** argv){
         // cout<<"1000getfcp: "<<getfcp<<endl;
         // exit(0);
         
-    return 0;
+    // return 0;
     // mappath_path+=duration.count();
     
     // end = std::chrono::high_resolution_clock::now();
@@ -3812,6 +3813,7 @@ int main(int argc, char** argv){
         //     cout<<count_f_max<<", "<<count_f_min<<endl;
         int cpite = 0;
         fixtime_cp = 0.0;
+        int log_number = std::log2(thread) + 1;
         std::vector<double> decp_data_copy = decp_data;
         for(int i=0;i<1000;i++){
             decp_data = decp_data_copy;
@@ -3821,9 +3823,9 @@ int main(int argc, char** argv){
                 
                 #pragma omp parallel for
 
-                for(auto i = 0; i < count_f_max; i ++){
+                for(auto i = 0; i < count_f_max * log_number; i ++){
                     
-                    int critical_i = all_max[i];
+                    int critical_i = all_max[i%log_number];
                     
                     fix_maxi_critical(critical_i,0);
 
@@ -3832,9 +3834,9 @@ int main(int argc, char** argv){
                 
                 
                 #pragma omp parallel for
-                for(auto i = 0; i < count_f_min; i ++){
+                for(auto i = 0; i < count_f_min * log_number; i ++){
 
-                    int critical_i = all_min[i];
+                    int critical_i = all_min[i%log_number];
                     fix_maxi_critical(critical_i,1);
 
                 }
@@ -3890,7 +3892,7 @@ int main(int argc, char** argv){
         duration = end - start1;
         cout<<"fixcp:"<<fixtime_cp_sub<<endl;
         start1 = std::chrono::high_resolution_clock::now();
-        exit(0);
+        // exit(0);
         mappath1(dec_label);
         
         end = std::chrono::high_resolution_clock::now();
