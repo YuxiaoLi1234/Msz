@@ -3640,11 +3640,11 @@ int main(int argc, char** argv){
     cout<<"10cigetfcp: "<<duration.count()<<endl;
     counter[1]+=1;
     mappath_path=0.0;
-    start1 = std::chrono::high_resolution_clock::now();
+    
     for(int i = 0; i < 1000; i++)
     {
        
-       
+       start1 = std::chrono::high_resolution_clock::now();
        mappath1(or_label, 1);
        end = std::chrono::high_resolution_clock::now();
        duration = end - start1;
