@@ -998,7 +998,112 @@ void initializeWithIndex(std::vector<int>& label, std::vector<int> direction_ds,
         }
     }
 }
+voi getlabel1(std::vector<int>& label, int& un_sign_ds, int& un_sign_as, int type=0){
+    std::vector<int> direction_as;
+    std::vector<int> direction_ds;
+    un_sign_ds = 0;
+    un_sign_as = 0;
+    if(type==0){
+
+        direction_as = de_direction_as;
+        direction_ds = de_direction_ds;
+
+    }
+    else{
+
+        direction_as = or_direction_as;
+        direction_ds = or_direction_ds;
+
+    }
+
+    #pragma omp parallel for reduction(+:un_sign_as) reduction(+:un_sign_ds)
+
+    for(int i=0;i<size2;i++){
+        
+        if(lowGradientIndices[i]==1){
+            continue;
+        }
+
     
+        int cur = label[i*2+1];
+    
+    
+        int next_vertex;
+        // cur!=-1就说明它首先不是cp，direction_as[cur]也说明他不是cp
+        if (cur!=-1 and direction_as[cur]!=-1){
+            
+            int direc = direction_as[cur];
+            // 找到他的下一个邻居
+            
+            next_vertex = from_direction_to_index1(cur, direc);
+            
+            // 检查下一个邻居是否为cp，如果是，直接把label换成邻居
+            // if(label[next_vertex*2+1] == -1){
+            label[i*2+1] = next_vertex;
+                
+            // }
+            
+            // else{
+                
+            //     label[i*2+1] = label[next_vertex*2+1];
+                
+                
+            // }
+            
+            if (direction_as[label[i*2+1]] != -1){
+                un_sign_as+=1;  
+            }
+            
+        }
+    
+    
+    
+    
+        cur = label[i*2];
+        int next_vertex1;
+        
+        
+        if (cur!=-1 and label[cur*2]!=-1){
+            
+            int direc = direction_ds[cur];
+            // 找到他的下一个邻居
+            next_vertex1 = from_direction_to_index1(cur, direc);
+            // 检查下一个邻居是否为cp，如果是，直接把label换成邻居
+            // if(label[next_vertex1*2] == -1){
+            label[i*2] = next_vertex1;
+                
+            // }
+            // 如果不是cp，检查邻居是否找到cp，如果找到了，就换成邻居的label
+            // else if(label[label[next_vertex1*2]*2] == -1){
+            //     label[i*2] = label[next_vertex1*2];  
+            // }
+            
+            // else if(direction_ds[i]!=-1){
+            //     // 如果邻居不是cp，那就替换成邻居的当前邻居
+            //     if(label[next_vertex1*2]!=-1){
+            //         label[i*2] = label[next_vertex1*2];
+            //     }
+            //     // 否则：下一个邻居是cp, 那么他的cp就是下一个邻居
+            //     else{
+
+            //         label[i*2] = next_vertex1;
+            //     }
+                
+                
+            // }
+            // if(i==66590){
+            //     printf("%d %d %d %d %d\n",next_vertex,de_direction_as[next_vertex],de_direction_as[label[next_vertex*2+1]],label[next_vertex*2+1],label[i*2+1]);
+            // }
+            if (direction_ds[label[i*2]]!=-1){
+                un_sign_ds+=1;
+                }
+            } 
+    }
+    
+        
+    return;
+
+}
 void getlabel(std::vector<int>& label, int& un_sign_ds, int& un_sign_as, int type=0){
 
     std::vector<int> direction_as;
@@ -1129,7 +1234,7 @@ void mappath1(std::vector<int>& label, int type=0){
         h_un_sign_as=0;
         h_un_sign_ds=0;
         
-        getlabel(label,h_un_sign_as,h_un_sign_ds,type);
+        getlabel1(label,h_un_sign_as,h_un_sign_ds,type);
         
     }   
 
