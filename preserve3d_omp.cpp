@@ -3536,14 +3536,36 @@ int main(int argc, char** argv){
     counter[1]+=1;
     mappath_path=0.0;
     start1 = std::chrono::high_resolution_clock::now();
+    for(int i = 0; i < 1000; i++)
+    {
+       
+       
+       mappath1(or_label, 1);
+       end = std::chrono::high_resolution_clock::now();
+       duration = end - start1;
+       mappath_path+=duration.count();
+    }
     
-    mappath1(or_label, 1);
     
-    end = std::chrono::high_resolution_clock::now();
-    duration = end - start1;
-    // cout<<"mappath: "<<duration.count()<<endl;
-    // exit(0);
-    mappath_path+=duration.count();
+    
+    
+    cout<<"mappath: "<<mappath_path<<endl;
+    std::ofstream outFilef("result/mss_computation_"+filename+"_"+std::to_string(bound)+"_"+compressor_id+".txt", std::ios::app);
+        // 检查文件是否成功打开
+    if (!outFilef) {
+        std::cerr << "Unable to open file for writing." << std::endl;
+        return 1; // 返回错误码
+    }
+    // finddirection:0, getfcp:1,  mappath2, fixcp:3
+    
+    outFilef << std::to_string(number_of_thread)<<":" <<mappath_path<< std::endl;
+        // outFilep << "fixtime_cp: "<<fixtime_cp << std::endl;
+        // cout<<"1000direction: "<<searchdirection_time<<endl;
+        // cout<<"1000getfcp: "<<getfcp<<endl;
+        // exit(0);
+        
+    return 0;
+    // mappath_path+=duration.count();
     
     // end = std::chrono::high_resolution_clock::now();
     // duration = end - start1;
