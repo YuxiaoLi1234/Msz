@@ -3616,7 +3616,7 @@ int main(int argc, char** argv){
     // finddirection:0, getfcp:1,  mappath2, fixcp:3
     
     outFilef << std::to_string(number_of_thread)<<":" <<std::endl;
-    outFilef << "find_direction: "<<searchdirection_time <<std::endl;
+    outFilef << "find_direction"<<searchdirection_time <<std::endl;
     // exit(0);
     // searchdirection_time = 0.0;
     
@@ -3673,7 +3673,7 @@ int main(int argc, char** argv){
     
     // finddirection:0, getfcp:1,  mappath2, fixcp:3
     
-    outFilef << "MSS_computation: "<<mappath_path <<std::endl;
+    outFilef << "MSS_computation"<<mappath_path <<std::endl;
         // outFilep << "fixtime_cp: "<<fixtime_cp << std::endl;
         // cout<<"1000direction: "<<searchdirection_time<<endl;
         // cout<<"1000getfcp: "<<getfcp<<endl;
@@ -3882,8 +3882,7 @@ int main(int argc, char** argv){
         
         // }
         cout<<"1000cifixcp: "<<fixtime_cp<<endl;
-        outFilef << "fix_cp: "<<fixtime_cp <<std::endl;
-       
+        outFilef << "fix_cp"<<fixtime_cp <<std::endl;
         // outFilep << "fixtime_cp: "<<fixtime_cp << std::endl;
         // cout<<"1000direction: "<<searchdirection_time<<endl;
         // cout<<"1000getfcp: "<<getfcp<<endl;

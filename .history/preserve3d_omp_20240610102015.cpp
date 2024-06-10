@@ -9,7 +9,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <stdatomic.h>
-#include <cmath>
 #include <parallel/algorithm>  
 #include <unordered_map>
 #include <random>
@@ -999,112 +998,7 @@ void initializeWithIndex(std::vector<int>& label, std::vector<int> direction_ds,
         }
     }
 }
-void getlabel1(std::vector<int>& label, int& un_sign_ds, int& un_sign_as, int type=0){
-    std::vector<int> direction_as;
-    std::vector<int> direction_ds;
-    un_sign_ds = 0;
-    un_sign_as = 0;
-    if(type==0){
-
-        direction_as = de_direction_as;
-        direction_ds = de_direction_ds;
-
-    }
-    else{
-
-        direction_as = or_direction_as;
-        direction_ds = or_direction_ds;
-
-    }
-
-    #pragma omp parallel for reduction(+:un_sign_as) reduction(+:un_sign_ds)
-
-    for(int i=0;i<size2;i++){
-        
-        if(lowGradientIndices[i]==1){
-            continue;
-        }
-
     
-        int cur = label[i*2+1];
-    
-    
-        int next_vertex;
-        // cur!=-1就说明它首先不是cp，direction_as[cur]也说明他不是cp
-        if (cur!=-1 and direction_as[cur]!=-1){
-            
-            int direc = direction_as[cur];
-            // 找到他的下一个邻居
-            
-            next_vertex = from_direction_to_index1(cur, direc);
-            
-            // 检查下一个邻居是否为cp，如果是，直接把label换成邻居
-            // if(label[next_vertex*2+1] == -1){
-            label[i*2+1] = next_vertex;
-                
-            // }
-            
-            // else{
-                
-            //     label[i*2+1] = label[next_vertex*2+1];
-                
-                
-            // }
-            
-            if (direction_as[label[i*2+1]] != -1){
-                un_sign_as+=1;  
-            }
-            
-        }
-    
-    
-    
-    
-        cur = label[i*2];
-        int next_vertex1;
-        
-        
-        if (cur!=-1 and label[cur*2]!=-1){
-            
-            int direc = direction_ds[cur];
-            // 找到他的下一个邻居
-            next_vertex1 = from_direction_to_index1(cur, direc);
-            // 检查下一个邻居是否为cp，如果是，直接把label换成邻居
-            // if(label[next_vertex1*2] == -1){
-            label[i*2] = next_vertex1;
-                
-            // }
-            // 如果不是cp，检查邻居是否找到cp，如果找到了，就换成邻居的label
-            // else if(label[label[next_vertex1*2]*2] == -1){
-            //     label[i*2] = label[next_vertex1*2];  
-            // }
-            
-            // else if(direction_ds[i]!=-1){
-            //     // 如果邻居不是cp，那就替换成邻居的当前邻居
-            //     if(label[next_vertex1*2]!=-1){
-            //         label[i*2] = label[next_vertex1*2];
-            //     }
-            //     // 否则：下一个邻居是cp, 那么他的cp就是下一个邻居
-            //     else{
-
-            //         label[i*2] = next_vertex1;
-            //     }
-                
-                
-            // }
-            // if(i==66590){
-            //     printf("%d %d %d %d %d\n",next_vertex,de_direction_as[next_vertex],de_direction_as[label[next_vertex*2+1]],label[next_vertex*2+1],label[i*2+1]);
-            // }
-            if (direction_ds[label[i*2]]!=-1){
-                un_sign_ds+=1;
-                }
-            } 
-    }
-    
-        
-    return;
-
-}
 void getlabel(std::vector<int>& label, int& un_sign_ds, int& un_sign_as, int type=0){
 
     std::vector<int> direction_as;
@@ -1235,7 +1129,7 @@ void mappath1(std::vector<int>& label, int type=0){
         h_un_sign_as=0;
         h_un_sign_ds=0;
         
-        getlabel1(label,h_un_sign_as,h_un_sign_ds,type);
+        getlabel(label,h_un_sign_as,h_un_sign_ds,type);
         
     }   
 
@@ -3591,32 +3485,21 @@ int main(int argc, char** argv){
     
     auto startt = std::chrono::high_resolution_clock::now();
     auto start1 = std::chrono::high_resolution_clock::now();
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start1;
     
     // #pragma omp parallel for
-    for(int i=0;i<10;i++){
-        start1 = std::chrono::high_resolution_clock::now();
-        find_direction(input_data, or_direction_as, or_direction_ds,1);
-        end = std::chrono::high_resolution_clock::now();
-        duration = end - start1;
-        searchdirection_time+=duration.count();
-    }
+
+    find_direction(input_data, or_direction_as, or_direction_ds,1);
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start1;
+    cout<<"find_direction: "<<duration.count()<<endl;
+    start1 = std::chrono::high_resolution_clock::now();
     
     
     
-    
-    cout<<"10cifind_direction: "<<searchdirection_time<<endl;
-    std::ofstream outFilef("result/time_"+filename+"_"+std::to_string(range)+"_"+compressor_id+".txt", std::ios::app);
-        // 检查文件是否成功打开
-    if (!outFilef) {
-        std::cerr << "Unable to open file for writing." << std::endl;
-        return 1; // 返回错误码
-    }
-    // finddirection:0, getfcp:1,  mappath2, fixcp:3
-    
-    outFilef << std::to_string(number_of_thread)<<":" <<std::endl;
-    outFilef << "find_direction: "<<searchdirection_time <<std::endl;
+    end = std::chrono::high_resolution_clock::now();
+    duration = end - start1;
+    cout<<"mappath: "<<duration.count()<<endl;
     // exit(0);
     // searchdirection_time = 0.0;
     
@@ -3636,30 +3519,27 @@ int main(int argc, char** argv){
     searchdirection_time+=duration.count();
     counter[0]+=2;
     std::cout.precision(std::numeric_limits<double>::max_digits10);
-    getfcp=0.0;
-    for(int i=0;i<10;i++){
-        start1 = std::chrono::high_resolution_clock::now();
-        get_false_criticle_points();
-        end = std::chrono::high_resolution_clock::now();
-        duration = end - start1;
-        getfcp+=duration.count();
-    }
+    start1 = std::chrono::high_resolution_clock::now();
+    // for(int i=0;i<10;i++){
+    //     cout<<i<<endl;
+    get_false_criticle_points();
+    // }
     
     
     
-    
+    end = std::chrono::high_resolution_clock::now();
+    duration = end - start1;
     cout<<"getfcp: "<<duration.count()<<endl;
-    outFilef << "getfcp: "<<getfcp <<std::endl;
     // exit(0);
     getfcp+=duration.count();
     cout<<"10cigetfcp: "<<duration.count()<<endl;
     counter[1]+=1;
     mappath_path=0.0;
-    
-    for(int i = 0; i < 10; i++)
+    start1 = std::chrono::high_resolution_clock::now();
+    for(int i = 0; i < 1000; i++)
     {
        
-       start1 = std::chrono::high_resolution_clock::now();
+       
        mappath1(or_label, 1);
        end = std::chrono::high_resolution_clock::now();
        duration = end - start1;
@@ -3670,16 +3550,21 @@ int main(int argc, char** argv){
     
     
     cout<<"mappath: "<<mappath_path<<endl;
-    
+    std::ofstream outFilef("result/mss_computation_"+filename+"_"+std::to_string(bound)+"_"+compressor_id+".txt", std::ios::app);
+        // 检查文件是否成功打开
+    if (!outFilef) {
+        std::cerr << "Unable to open file for writing." << std::endl;
+        return 1; // 返回错误码
+    }
     // finddirection:0, getfcp:1,  mappath2, fixcp:3
     
-    outFilef << "MSS_computation: "<<mappath_path <<std::endl;
+    outFilef << std::to_string(number_of_thread)<<":" <<mappath_path<< std::endl;
         // outFilep << "fixtime_cp: "<<fixtime_cp << std::endl;
         // cout<<"1000direction: "<<searchdirection_time<<endl;
         // cout<<"1000getfcp: "<<getfcp<<endl;
         // exit(0);
         
-    // return 0;
+    return 0;
     // mappath_path+=duration.count();
     
     // end = std::chrono::high_resolution_clock::now();
@@ -3822,9 +3707,8 @@ int main(int argc, char** argv){
         //     cout<<count_f_max<<", "<<count_f_min<<endl;
         int cpite = 0;
         fixtime_cp = 0.0;
-        int log_number = std::log2(number_of_thread) + 1;
         std::vector<double> decp_data_copy = decp_data;
-        for(int i=0;i<10;i++){
+        for(int i=0;i<1000;i++){
             decp_data = decp_data_copy;
             while (count_f_max>0 or count_f_min>0){
                 cpite+=1;
@@ -3882,8 +3766,15 @@ int main(int argc, char** argv){
         
         // }
         cout<<"1000cifixcp: "<<fixtime_cp<<endl;
-        outFilef << "fix_cp: "<<fixtime_cp <<std::endl;
-       
+        std::ofstream outFilep("result/weak_scaling"+filename+"_"+std::to_string(bound)+"_"+compressor_id+".txt", std::ios::app);
+        // 检查文件是否成功打开
+        if (!outFilep) {
+            std::cerr << "Unable to open file for writing." << std::endl;
+            return 1; // 返回错误码
+        }
+        // finddirection:0, getfcp:1,  mappath2, fixcp:3
+        
+        outFilep << std::to_string(number_of_thread)<<":" <<fixtime_cp<< std::endl;
         // outFilep << "fixtime_cp: "<<fixtime_cp << std::endl;
         // cout<<"1000direction: "<<searchdirection_time<<endl;
         // cout<<"1000getfcp: "<<getfcp<<endl;
@@ -3894,7 +3785,7 @@ int main(int argc, char** argv){
         duration = end - start1;
         cout<<"fixcp:"<<fixtime_cp_sub<<endl;
         start1 = std::chrono::high_resolution_clock::now();
-        // exit(0);
+        exit(0);
         mappath1(dec_label);
         
         end = std::chrono::high_resolution_clock::now();
