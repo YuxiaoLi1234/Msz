@@ -1,7 +1,3 @@
-#include "cuda_runtime.h"
-#include "cublas_v2.h"
-#include <cuda_runtime.h>
-#include "device_launch_parameters.h"
 #include <fstream>
 #include <sstream>
 #include <cfloat>
@@ -1235,7 +1231,7 @@ void mappath1(std::vector<int>& label, int type=0){
         h_un_sign_as=0;
         h_un_sign_ds=0;
         
-        getlabel1(label,h_un_sign_as,h_un_sign_ds,type);
+        getlabel(label,h_un_sign_as,h_un_sign_ds,type);
         
     }   
 
@@ -3799,7 +3795,7 @@ int main(int argc, char** argv){
     // getfpath+=duration.count();
     
     std::vector<std::vector<double>> time_counter;
-    
+    int false_number = count_f_max+ count_f_min;
     while (wrong_index_as.size()>0 or wrong_index_ds.size()>0 or count_f_max>0 or count_f_min>0){
         double fixtime_path_sub = 0;
         double fixtime_cp_sub = 0;
@@ -3824,6 +3820,7 @@ int main(int argc, char** argv){
         fixtime_cp = 0.0;
         int log_number = std::log2(number_of_thread) + 1;
         std::vector<double> decp_data_copy = decp_data;
+        
         for(int i=0;i<10;i++){
             decp_data = decp_data_copy;
             while (count_f_max>0 or count_f_min>0){
@@ -3883,7 +3880,7 @@ int main(int argc, char** argv){
         // }
         cout<<"1000cifixcp: "<<fixtime_cp<<endl;
         outFilef << "fix_cp: "<<fixtime_cp <<std::endl;
-       
+        outFilef << "false_number: "<<false_number <<std::endl;
         // outFilep << "fixtime_cp: "<<fixtime_cp << std::endl;
         // cout<<"1000direction: "<<searchdirection_time<<endl;
         // cout<<"1000getfcp: "<<getfcp<<endl;
