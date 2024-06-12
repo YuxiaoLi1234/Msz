@@ -2534,7 +2534,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     float elapsedTime;
     int initialValue = 0;
     cout<<bound1<<endl;
-    exit(0);
+    // exit(0);
     // float find_direciton = 0.0;
     float getfcp = 0.0;
     cout<<num1<<endl;
