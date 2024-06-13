@@ -6218,7 +6218,7 @@ int main(int argc, char** argv){
     
     std::chrono::duration<double> duration = ends - start;
     double compression_time = duration.count();
-    std::vector<double> decp_data_copy(decp_data);
+    std::vector<double> decp_data_copy = decp_data;
     
     or_direction_as.resize(size2);
     or_direction_ds.resize(size2);
@@ -6539,6 +6539,7 @@ int main(int argc, char** argv){
             cnt++;
         }
     }
+    std::cout<<"一共："<<cnt<<std::endl;
     std::vector<int> diffs;  // 存储差值的 vector
     std::string indexfilename = "data"+filename+".bin";
     std::string editsfilename = "data_edits"+filename+".bin";
