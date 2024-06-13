@@ -2534,7 +2534,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     float elapsedTime;
     int initialValue = 0;
     cout<<bound1<<endl;
-    // exit(0);
+    
     // float find_direciton = 0.0;
     float getfcp = 0.0;
     cout<<num1<<endl;
@@ -3025,7 +3025,6 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     cudaMemcpy(b->data(), temp1, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(c->data(), d_temp2, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(d->data(), d_temp3, num1 * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(f->data(), temp4, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
