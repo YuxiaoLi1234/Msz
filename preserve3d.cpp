@@ -3723,7 +3723,7 @@ std::vector<std::vector<int>> directions1 = {{0,1,0},{0,-1,0},{1,0,0},{-1,0,0},{
 //      std::string line;
 //      std::ifstream file(filename);
 //     //  std::ifstream file(filename);
-//     // cout<<"dh"<<endl;
+//     // std::cout<<"dh"<<std::endl;
 //     // std::vector<double> data;
 //     double num;
 
@@ -3748,10 +3748,10 @@ std::vector<std::vector<int>> directions1 = {{0,1,0},{0,-1,0},{1,0,0},{-1,0,0},{
 //             if (file.eof()) break;
 //         }
 //     }
-//     // cout<<"读完了"<<cnt<<endl;
+//     // std::cout<<"读完了"<<cnt<<std::endl;
 //     file.close();
     
-//     // cout<<data.size()<<endl;
+//     // std::cout<<data.size()<<std::endl;
 //     // Optionally print the data to verify
 //     // for (double num : data) {
 //     //     std::cout << num << " ";
@@ -3771,14 +3771,14 @@ std::vector<std::vector<int>> directions1 = {{0,1,0},{0,-1,0},{1,0,0},{-1,0,0},{
 //     //             // 后续操作
 //     //         } catch (const std::exception& e) {
 //     //             if(typeid(value) == typeid(std::string)){
-//     //                 cout<<value<<endl;
+//     //                 std::cout<<value<<std::endl;
 //     //             }
                 
 //     //             std::cerr << "转换错误: " << e.what() << '\n';
 //     //             // 异常处理代码
 //     //         }
 
-//     //         // cout<<value<<endl;
+//     //         // std::cout<<value<<std::endl;
 //     //            data.push_back(std::stod(value)); // 将字符串转换为 double
 //     //       }
 
@@ -3841,7 +3841,7 @@ std::vector<double> getdata2(std::string filename){
 
     // 确定文件中有多少个float值
     std::streamsize num_floats = size / sizeof(double);
-    // cout<<num_floats<<endl;
+    // std::cout<<num_floats<<std::endl;
     // 创建一个足够大的vector来存储文件内容
     std::vector<double> buffer(num_floats);
 
@@ -3936,7 +3936,7 @@ std::vector<int> find_low(){
             }
         }
     }
-    // cout<<"ok"<<endl;
+    // std::cout<<"ok"<<std::endl;
     return lowGradientIndices;
 }
 
@@ -4345,7 +4345,7 @@ int from_direction_to_index(int cur, int direc){
 //                 largetst_index = indexs[i];
 //                 // 113618, 113667, 111168, 111168
 //                 // if(wrong_index_ds.size()==1 and index==111168){
-//                 //     cout<<index<<", "<<largetst_index<<","<<decp_data[largetst_index]<<", "<<decp_data[113667]<<endl;
+//                 //     std::cout<<index<<", "<<largetst_index<<","<<decp_data[largetst_index]<<", "<<decp_data[113667]<<std::endl;
 //                 // }
 
                 
@@ -4354,7 +4354,7 @@ int from_direction_to_index(int cur, int direc){
 //     };
     
 //     // if(lowGradientIndices[largest_index] == 1){
-//     //     cout<<largetst_index<<endl;
+//     //     std::cout<<largetst_index<<std::endl;
 //     // }
 //     // int row_l = (largetst_index % (height * width)) / width;
 //     // int row_i = (index % (height * width)) / width;
@@ -4403,7 +4403,7 @@ int from_direction_to_index(int cur, int direc){
 //             };
 //         };
 //     };
-//     // cout<<largetst_index<<","<<index<<endl;
+//     // std::cout<<largetst_index<<","<<index<<std::endl;
 //     // int row_l = (largetst_index % (height * width)) / width;
 //     // int row_i = (index % (height * width)) / width;
     
@@ -4438,7 +4438,7 @@ int from_direction_to_index(int cur, int direc){
         
 //         while (direction_as[cur]!=-1){
 //             // if(lowGradientIndices.find(cur)!=lowGradientIndices.end()){
-//             //     cout<<cur<<", "<<i<<endl;
+//             //     std::cout<<cur<<", "<<i<<std::endl;
 //             // }
 //             int direc = direction_as[cur];
             
@@ -4589,9 +4589,9 @@ std::vector<int> or_label;
 //                         //         }
                                 
 //                         //         if(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]+diff2)<=bound){
-//                         //             if(smallest_vertex==66783){cout<<"在这里11."<<endl;}
+//                         //             if(smallest_vertex==66783){std::cout<<"在这里11."<<std::endl;}
 //                         //             decp_data[smallest_vertex]-=diff2;
-//                         //             // if(index==97) cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<endl;
+//                         //             // if(index==97) std::cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<std::endl;
 //                         //         }
                                 
                                 
@@ -4601,9 +4601,9 @@ std::vector<int> or_label;
 
 //                         if(abs(input_data[index]-(decp_data[index]-d))<=bound and decp_data[index]>=decp_data[next_vertex] and d>=1e-16){
 //                             // if(index==1620477){
-//                             //     // cout<<"next_vertex: "<<decp_data[next_vertex]<<endl;
-//                             //     // cout<<"smallest_vertex: "<<decp_data[smallest_vertex]<<endl;
-//                             //     cout<<"before index: "<<decp_data[index]<<endl;
+//                             //     // std::cout<<"next_vertex: "<<decp_data[next_vertex]<<std::endl;
+//                             //     // std::cout<<"smallest_vertex: "<<decp_data[smallest_vertex]<<std::endl;
+//                             //     std::cout<<"before index: "<<decp_data[index]<<std::endl;
                                 
 //                             // }
                             
@@ -4614,9 +4614,9 @@ std::vector<int> or_label;
 //                         }
 //                         // else if(abs(input_data[next_vertex]-(decp_data[next_vertex]+d1))<=bound and decp_data[index]>=decp_data[next_vertex] and d1>0){
 //                         //     // if(index==1620477){
-//                         //     //     // cout<<"next_vertex: "<<decp_data[next_vertex]<<endl;
-//                         //     //     // cout<<"smallest_vertex: "<<decp_data[smallest_vertex]<<endl;
-//                         //     //     cout<<"before index: "<<decp_data[index]<<endl;
+//                         //     //     // std::cout<<"next_vertex: "<<decp_data[next_vertex]<<std::endl;
+//                         //     //     // std::cout<<"smallest_vertex: "<<decp_data[smallest_vertex]<<std::endl;
+//                         //     //     std::cout<<"before index: "<<decp_data[index]<<std::endl;
                                 
 //                         //     // }
                             
@@ -4655,7 +4655,7 @@ std::vector<int> or_label;
 //                     //         d/=2;
 //                     // }
 //                     // if(index==157569){
-//                     //     cout<<"在这时候d: "<<d<<endl;
+//                     //     std::cout<<"在这时候d: "<<d<<std::endl;
 //                     // }   
 //                     // double d = 1e-16;
 //                     if(abs(input_data[index]-decp_data[index]+d)<=bound){
@@ -4663,7 +4663,7 @@ std::vector<int> or_label;
 //                         decp_data[index]-=d;
 //                     }
 //                     else if(abs(input_data[next_vertex]-decp_data[next_vertex]-d)<=bound){
-//                         // if(next_vertex==78){cout<<"在这里21"<<endl;}
+//                         // if(next_vertex==78){std::cout<<"在这里21"<<std::endl;}
 //                         decp_data[next_vertex]+=d;
 //                     }
 //                 }
@@ -4675,19 +4675,19 @@ std::vector<int> or_label;
 //         }
 //         else{
 //             // if(index==25026 and count_f_max<=770){
-//             //     cout<<"在这里"<<endl;
+//             //     std::cout<<"在这里"<<std::endl;
 //             // }
             
 //             int largest_index = from_direction_to_index(index,de_direction_as[index]);
 //             double diff = (bound-(input_data[index]-decp_data[index]))/2.0;
 //             double d = (bound-(input_data[largest_index]-decp_data[index]))/2.0;
 //             // if(index==25026 and count_f_max<=770){
-//             //     cout<<"改变前"<<endl;
-//             //     cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
-//             //     cout<<"next_vertex: "<<largest_index<<","<<decp_data[largest_index]<<endl;
-//             //     // cout<<"smallest_vertex: "<<smallest_vertex<<", "<<decp_data[smallest_vertex]<<endl;
-//             //     cout<<"diff: "<<d<<","<<"d: "<<d<<endl;
-//             //     cout<<or_direction_as[25026]<<de_direction_as[25026]<<endl;
+//             //     std::cout<<"改变前"<<std::endl;
+//             //     std::cout<<"index: "<<index<<", "<<decp_data[index]<<std::endl;
+//             //     std::cout<<"next_vertex: "<<largest_index<<","<<decp_data[largest_index]<<std::endl;
+//             //     // std::cout<<"smallest_vertex: "<<smallest_vertex<<", "<<decp_data[smallest_vertex]<<std::endl;
+//             //     std::cout<<"diff: "<<d<<","<<"d: "<<d<<std::endl;
+//             //     std::cout<<or_direction_as[25026]<<de_direction_as[25026]<<std::endl;
 //             // }
 //             if(decp_data[index]>decp_data[largest_index] or(decp_data[index]==decp_data[largest_index] and index>largest_index)){
 //                 de_direction_as[index] = -1;
@@ -4696,7 +4696,7 @@ std::vector<int> or_label;
                 
 //                 if (decp_data[index]<=decp_data[largest_index]){
 //                     if(abs(input_data[largest_index]-decp_data[index]+d)){
-//                         // if(largest_index==66783){cout<<"在这里17"<<endl;}
+//                         // if(largest_index==66783){std::cout<<"在这里17"<<std::endl;}
 //                         decp_data[largest_index] = decp_data[index]-d;
 //                     }
 //                 }
@@ -4737,13 +4737,13 @@ std::vector<int> or_label;
 //             }
 
 //             // if(index == 6595 and count_f_min==5){
-//             //     cout<<"下降："<<endl;
-//             //     cout<<"next: "<<next_vertex<<", "<<decp_data[next_vertex]<<endl;
-//             //     cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
-//             //     cout<<"daxiaoguanxi: "<<decp_data[index]-decp_data[next_vertex]<<endl;
-//             //     cout<<"diff: "<<diff<<endl;
-//             //     cout<<"d: "<<d<<endl;
-//             //     cout<<"d1: "<<d1<<endl;
+//             //     std::cout<<"下降："<<std::endl;
+//             //     std::cout<<"next: "<<next_vertex<<", "<<decp_data[next_vertex]<<std::endl;
+//             //     std::cout<<"index: "<<index<<", "<<decp_data[index]<<std::endl;
+//             //     std::cout<<"daxiaoguanxi: "<<decp_data[index]-decp_data[next_vertex]<<std::endl;
+//             //     std::cout<<"diff: "<<diff<<std::endl;
+//             //     std::cout<<"d: "<<d<<std::endl;
+//             //     std::cout<<"d1: "<<d1<<std::endl;
 //             // }
             
 //             if(diff>=1e-16 or d>=1e-16 or d1>=1e-16){
@@ -4757,15 +4757,15 @@ std::vector<int> or_label;
 //                         }
                         
 //                         if(abs(input_data[next_vertex]-decp_data[index]+diff)<=bound and diff>=1e-16){
-//                             // if(index==344033 and count_f_min==2){cout<<"在这里22"<<d<<endl;}
+//                             // if(index==344033 and count_f_min==2){std::cout<<"在这里22"<<d<<std::endl;}
 //                             decp_data[next_vertex]= decp_data[index]-diff;
 //                         }
 //                         else if(d1>=1e-16){
-//                             // if(index==344033 and count_f_min==2){cout<<"在这里23"<<d<<endl;}
+//                             // if(index==344033 and count_f_min==2){std::cout<<"在这里23"<<d<<std::endl;}
 //                             decp_data[next_vertex]-=d1;
 //                         }
 //                         else if(d>=1e-16){
-//                             // if(index==344033 and count_f_min==2){cout<<"在这里24"<<d<<endl;}
+//                             // if(index==344033 and count_f_min==2){std::cout<<"在这里24"<<d<<std::endl;}
 //                             decp_data[index]+=d;
 //                         }
 
@@ -4784,7 +4784,7 @@ std::vector<int> or_label;
 //                                 // while(abs(input_data[next_vertex]-decp_data[index]+diff)<=bound and diff<1e-17){
 //                                 //     diff*=2;
 //                                 // }
-//                                 // if(index==270808 and count_f_min==1){cout<<"在这里2！"<< endl;}
+//                                 // if(index==270808 and count_f_min==1){std::cout<<"在这里2！"<< std::endl;}
 //                                 while(abs(input_data[next_vertex]-decp_data[index]+diff)<bound and diff <= 1e-17){
 //                                     diff*=2;
 //                                 }
@@ -4792,26 +4792,26 @@ std::vector<int> or_label;
 //                                     decp_data[next_vertex] = decp_data[index]-diff;
 //                                 }
 //                                 // if(index == 6595 and count_f_min==5){
-//                                 //     cout<<"在这里1！"<< diff <<", "<<index<<", "<<decp_data[index]<<","<<input_data[index]<<","<<input_data[next_vertex]<<endl;
+//                                 //     std::cout<<"在这里1！"<< diff <<", "<<index<<", "<<decp_data[index]<<","<<input_data[index]<<","<<input_data[next_vertex]<<std::endl;
 
 //                                 // }
-//                                 // if(next_vertex==66783){cout<<"在这里13"<<endl;}
+//                                 // if(next_vertex==66783){std::cout<<"在这里13"<<std::endl;}
 //                                 // decp_data[next_vertex] = decp_data[index]-diff;
 //                                 // if(index==89797){
-//                                 //         cout<<"在这里2"<<diff<<", "<<d<<endl;
+//                                 //         std::cout<<"在这里2"<<diff<<", "<<d<<std::endl;
 //                                 // }
 
 //                                 // decp_data[index]+=d;
 //                             }
 //                             // else if(abs(input_data[index]-decp_data[index]-d)<=bound and decp_data[index]<=decp_data[next_vertex] and d>0){
-//                             //     if(index==135569){cout<<"在这里23"<<endl;}
+//                             //     if(index==135569){std::cout<<"在这里23"<<std::endl;}
 //                             //     decp_data[index]+=d;
 //                             // }
 //                             else if(abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<=bound and decp_data[index]<=decp_data[next_vertex] and d1>=1e-16){
 //                                 while(abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<bound and d1<=1e-17){
 //                                     d1*=2;
 //                                 }
-//                                 // if(count_f_min<=12){cout<<"在这里2！"<<abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<<"," <<d1<< endl;}
+//                                 // if(count_f_min<=12){std::cout<<"在这里2！"<<abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<<"," <<d1<< std::endl;}
 //                                 if(abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<=bound and d1>=1e-16){
 //                                     decp_data[next_vertex]-=d1;
 //                                 }
@@ -4824,7 +4824,7 @@ std::vector<int> or_label;
 //                             }
 //                             else{
 //                                 decp_data[next_vertex] = input_data[next_vertex] - bound;
-//                                 //if(index == 6595 and count_f_min==5){cout<<"在这里3！"<<abs(input_data[next_vertex]-bound-decp_data[next_vertex])<< endl;}
+//                                 //if(index == 6595 and count_f_min==5){std::cout<<"在这里3！"<<abs(input_data[next_vertex]-bound-decp_data[next_vertex])<< std::endl;}
 //                             }
                             
                             
@@ -4843,32 +4843,32 @@ std::vector<int> or_label;
                 
 //                 if(decp_data[index]<decp_data[next_vertex]){
 //                     // if(next_vertex==339928 and wrong_maxi_cp.size()==84){
-//                     //     cout<<"np下降："<<endl;
-//                     //     cout<<"next: "<<next_vertex<<", "<<decp_data[next_vertex]<<endl;
-//                     //     cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
-//                     //     cout<<"daxiaoguanxi: "<<decp_data[index]-decp_data[next_vertex]<<endl;
-//                     //     cout<<"diff: "<<diff<<endl;
-//                     //     cout<<"d: "<<d<<endl;
+//                     //     std::cout<<"np下降："<<std::endl;
+//                     //     std::cout<<"next: "<<next_vertex<<", "<<decp_data[next_vertex]<<std::endl;
+//                     //     std::cout<<"index: "<<index<<", "<<decp_data[index]<<std::endl;
+//                     //     std::cout<<"daxiaoguanxi: "<<decp_data[index]-decp_data[next_vertex]<<std::endl;
+//                     //     std::cout<<"diff: "<<diff<<std::endl;
+//                     //     std::cout<<"d: "<<d<<std::endl;
                 
 //                     //     }
                         
 //                         // if(abs(input_data[index]-(decp_data[next_vertex]))<=bound and abs(input_data[next_vertex]-decp_data[index])<=bound){
 //                         //     double t = decp_data[index];
 //                         //     decp_data[index] = decp_data[next_vertex];
-//                         //     if(next_vertex==66783){cout<<"在这里14"<<endl;}
+//                         //     if(next_vertex==66783){std::cout<<"在这里14"<<std::endl;}
 //                         //     decp_data[next_vertex] = t;
                             
 //                         // }
 //                         if(abs(input_data[next_vertex]-decp_data[index])<bound){
 //                             double t = (decp_data[index]-(input_data[index]-bound))/2.0;
-//                             // if(index==949999){cout<<"在这里24"<<endl;}
+//                             // if(index==949999){std::cout<<"在这里24"<<std::endl;}
 //                             // decp_data[index] = decp_data[next_vertex];
-//                             // if(next_vertex==66783){cout<<"在这里14"<<endl;}
+//                             // if(next_vertex==66783){std::cout<<"在这里14"<<std::endl;}
 //                             decp_data[next_vertex] = decp_data[index]-t;
                             
 //                         }
 //                         else{
-//                             //if(index==949999){cout<<"在这里29"<<endl;}
+//                             //if(index==949999){std::cout<<"在这里29"<<std::endl;}
 //                             decp_data[index] = input_data[index] + bound;
 //                         }
 //                 }
@@ -4879,14 +4879,14 @@ std::vector<int> or_label;
 //                     //         d/=2;
 //                     // }
 //                     // if(index==949999){
-//                     //     cout<<"在这里99 "<<d<<endl;
+//                     //     std::cout<<"在这里99 "<<d<<std::endl;
 //                     // }   
 //                     // double d = 1e-16;
 //                     if(abs(input_data[index]-decp_data[index]-d)<=bound){
 //                         decp_data[index]+=d;
 //                     }
 //                     else if(abs(input_data[next_vertex]-decp_data[next_vertex]+d)<=bound){
-//                         // if(next_vertex==66783){cout<<"在这里13"<<endl;}
+//                         // if(next_vertex==66783){std::cout<<"在这里13"<<std::endl;}
 //                         decp_data[next_vertex]-=d;
 //                     }
 //                 }
@@ -4897,14 +4897,14 @@ std::vector<int> or_label;
             
             
 //         // if(index == 6595 and count_f_min==5){
-//         //         cout<<"下降后："<<endl;
-//         //         cout<<"next: "<<next_vertex<<", "<<decp_data[next_vertex]<<endl;
-//         //         cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
-//         //         cout<<"daxiaoguanxi: "<<decp_data[index]-decp_data[next_vertex]<<endl;
-//         //         cout<<"diff: "<<diff<<endl;
-//         //         cout<<"d: "<<d<<endl;
-//         //         cout<<"d1: "<<d1<<endl;
-//         //         cout<<input_data[index]<<","<<input_data[next_vertex]<<endl;
+//         //         std::cout<<"下降后："<<std::endl;
+//         //         std::cout<<"next: "<<next_vertex<<", "<<decp_data[next_vertex]<<std::endl;
+//         //         std::cout<<"index: "<<index<<", "<<decp_data[index]<<std::endl;
+//         //         std::cout<<"daxiaoguanxi: "<<decp_data[index]-decp_data[next_vertex]<<std::endl;
+//         //         std::cout<<"diff: "<<diff<<std::endl;
+//         //         std::cout<<"d: "<<d<<std::endl;
+//         //         std::cout<<"d1: "<<d1<<std::endl;
+//         //         std::cout<<input_data[index]<<","<<input_data[next_vertex]<<std::endl;
 //         //     }
             
         
@@ -4916,12 +4916,12 @@ std::vector<int> or_label;
 //             double diff = (bound-(input_data[index]-decp_data[index]))/2.0;
 //             double d = (bound-(input_data[largest_index]-decp_data[index]))/2.0;
 //             // if(count_f_min==84){
-//             //     cout<<"np下降："<<endl;
-//             //     cout<<"next: "<<largest_index<<", "<<decp_data[largest_index]<<endl;
-//             //     cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
-//             //     cout<<"daxiaoguanxi: "<<decp_data[index]-decp_data[largest_index]<<endl;
-//             //     cout<<"diff: "<<diff<<endl;
-//             //     cout<<"d: "<<d<<endl;
+//             //     std::cout<<"np下降："<<std::endl;
+//             //     std::cout<<"next: "<<largest_index<<", "<<decp_data[largest_index]<<std::endl;
+//             //     std::cout<<"index: "<<index<<", "<<decp_data[index]<<std::endl;
+//             //     std::cout<<"daxiaoguanxi: "<<decp_data[index]-decp_data[largest_index]<<std::endl;
+//             //     std::cout<<"diff: "<<diff<<std::endl;
+//             //     std::cout<<"d: "<<d<<std::endl;
                 
 //             // }
 //             if(decp_data[index]<decp_data[largest_index] or (decp_data[index]==decp_data[largest_index] and index<largest_index)){
@@ -4938,7 +4938,7 @@ std::vector<int> or_label;
                     
 //                     if(abs(input_data[index]-decp_data[index]+diff)<=bound){
 //                         // if(index==999973){
-//                         //     cout<<"在这里2！"<<endl;
+//                         //     std::cout<<"在这里2！"<<std::endl;
 //                         // }
                         
 //                         decp_data[index] -= diff;
@@ -4952,7 +4952,7 @@ std::vector<int> or_label;
 //             else{
 //                 if (decp_data[index]>=decp_data[largest_index]){
                     
-//                     // if(index==66783){cout<<"在这里15"<<endl;}
+//                     // if(index==66783){std::cout<<"在这里15"<<std::endl;}
 //                     decp_data[index] = input_data[index] - bound;
 //                 }   
     
@@ -4987,7 +4987,7 @@ std::vector<int> or_label;
 //                 }
 //             }
 //             // if(lowGradientIndices[index] == 1 or lowGradientIndices.find(next_vertex)!=lowGradientIndices.end() or lowGradientIndices.find(smallest_vertex)!=lowGradientIndices.end()){
-//             //         cout<<index<<","<<next_vertex<<","<<smallest_vertex<<endl;
+//             //         std::cout<<index<<","<<next_vertex<<","<<smallest_vertex<<std::endl;
 //             //     }
 //             threshold = decp_data[smallest_vertex];
 //             double diff = (bound - (input_data[next_vertex]-decp_data[index]))/2.0;
@@ -5043,7 +5043,7 @@ std::vector<int> or_label;
                                 
 //                                 if(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]+diff2)<=bound){
 //                                     decp_data[smallest_vertex]-=diff2;
-//                                     // if(index==97) cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<endl;
+//                                     // if(index==97) std::cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<std::endl;
 //                                 }
                                 
                                 
@@ -5334,7 +5334,7 @@ std::vector<int> or_label;
                             
 //                             if(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]+diff2)<=bound){
 //                                 decp_data[smallest_vertex]-=diff2;
-//                                 // if(index==97) cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<endl;
+//                                 // if(index==97) std::cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<std::endl;
 //                             }
                             
                             
@@ -5366,7 +5366,7 @@ std::vector<int> or_label;
                             
 //                     //         if(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]-diff2)<=bound){
 //                     //             decp_data[smallest_vertex]+=diff2;
-//                     //             // if(index==97) cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<endl;
+//                     //             // if(index==97) std::cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<std::endl;
 //                     //         }
                             
                             
@@ -5571,17 +5571,17 @@ int fixpath(int index, int direction){
             // double d = (input_data[false_index]-bound_data[false_index]-decp_data[false_index])/2.0;
             // if(wrong_index_as.size()<=50){
             // // pre=1;
-            //     cout<<index<<", "<<decp_data[index]<<"," <<input_data[index]<<endl;
-            //     cout<<start_vertex<<", "<<decp_data[start_vertex]<<"," <<input_data[start_vertex]<<endl;
-            //     cout<<true_index<<", "<<decp_data[true_index]<<"," <<input_data[true_index]<<endl;
-            //     cout<<false_index<<", "<<decp_data[false_index]<<"," <<input_data[false_index]<<endl;
-            //     cout<<diff<<endl;
-            //     cout<<d<<endl;
+            //     std::cout<<index<<", "<<decp_data[index]<<"," <<input_data[index]<<std::endl;
+            //     std::cout<<start_vertex<<", "<<decp_data[start_vertex]<<"," <<input_data[start_vertex]<<std::endl;
+            //     std::cout<<true_index<<", "<<decp_data[true_index]<<"," <<input_data[true_index]<<std::endl;
+            //     std::cout<<false_index<<", "<<decp_data[false_index]<<"," <<input_data[false_index]<<std::endl;
+            //     std::cout<<diff<<std::endl;
+            //     std::cout<<d<<std::endl;
             // }
             if(decp_data[false_index]<decp_data[true_index]){
                 de_direction_as[cur]=or_direction_as[cur];
             //     if(wrong_maxi_cp.size()==1 and wrong_min_cp.size()==0){
-            //     cout<<de_direction_as[64582]<<endl;
+            //     std::cout<<de_direction_as[64582]<<std::endl;
             // }
                 return 0;
             }
@@ -5642,7 +5642,7 @@ int fixpath(int index, int direction){
                             
                             if(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]+diff2)<=bound){
                                 decp_data[smallest_vertex]-=diff2;
-                                // if(index==97) cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<endl;
+                                // if(index==97) std::cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<std::endl;
                             }
                             
                             
@@ -5674,7 +5674,7 @@ int fixpath(int index, int direction){
                             
                     //         if(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]-diff2)<=bound){
                     //             decp_data[smallest_vertex]+=diff2;
-                    //             // if(index==97) cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<endl;
+                    //             // if(index==97) std::cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<std::endl;
                     //         }
                             
                             
@@ -5705,8 +5705,8 @@ int fixpath(int index, int direction){
                 //对的
                 double diff = (bound-(input_data[false_index]-decp_data[false_index]))/2.0;
                 // if(wrong_index_as.size()==2){
-                //     cout<<diff<<endl;
-                //     cout<<false_index<<endl;
+                //     std::cout<<diff<<std::endl;
+                //     std::cout<<false_index<<std::endl;
                 // }
                 if (decp_data[false_index]>=decp_data[true_index]){
                     if(abs(input_data[false_index]-((decp_data[false_index]+input_data[true_index]-bound)/2.0))<=bound){
@@ -5736,7 +5736,7 @@ int fixpath(int index, int direction){
             
             // if(de_direction_ds[cur]==-1 && next_vertex == cur){
             //     if(wrong_index_ds.size()==4){
-            //         cout<<cur<<", "<<index <<", "<<de_direction_ds[cur]<<", "<<or_direction_ds[cur]<<endl;
+            //         std::cout<<cur<<", "<<index <<", "<<de_direction_ds[cur]<<", "<<or_direction_ds[cur]<<std::endl;
             //     }
             //     cur = -1;
             //     break;
@@ -5753,8 +5753,8 @@ int fixpath(int index, int direction){
     
         int start_vertex = cur;
         // if(wrong_index_ds.size()==4){
-        //     cout<<"修复的时候变成了:" <<endl;
-        //     cout<<start_vertex<<", "<<de_direction_ds[start_vertex]<<", "<<or_direction_ds[start_vertex]<<endl;
+        //     std::cout<<"修复的时候变成了:" <<std::endl;
+        //     std::cout<<start_vertex<<", "<<de_direction_ds[start_vertex]<<", "<<or_direction_ds[start_vertex]<<std::endl;
         // }
         if (start_vertex==-1) return 0;
         
@@ -5775,10 +5775,10 @@ int fixpath(int index, int direction){
             // diff是用来给true_index增加的
             // d是用来给false_index见效的
             // if(wrong_index_as.size()<=10){
-            //     cout<<index<<", "<<decp_data[index]<<"," <<input_data[index]<<endl;
-            //     cout<<start_vertex<<", "<<decp_data[start_vertex]<<"," <<input_data[start_vertex]<<endl;
-            //     cout<<false_index<<", "<<decp_data[false_index]<<"," <<input_data[false_index]<<endl;   
-            //     cout<<true_index<<", "<<decp_data[true_index]<<"," <<input_data[true_index]<<endl;                     
+            //     std::cout<<index<<", "<<decp_data[index]<<"," <<input_data[index]<<std::endl;
+            //     std::cout<<start_vertex<<", "<<decp_data[start_vertex]<<"," <<input_data[start_vertex]<<std::endl;
+            //     std::cout<<false_index<<", "<<decp_data[false_index]<<"," <<input_data[false_index]<<std::endl;   
+            //     std::cout<<true_index<<", "<<decp_data[true_index]<<"," <<input_data[true_index]<<std::endl;                     
             // }
             if(decp_data[false_index]>decp_data[true_index]){
                 de_direction_ds[cur]=or_direction_ds[cur];
@@ -5904,7 +5904,7 @@ double get_wrong_index_path(){
             wrong_index_ds.push_back(index);
         }
 }
-    // cout<<cnt/size2<<endl;
+    // std::cout<<cnt/size2<<std::endl;
     double result = static_cast<double>(cnt) / static_cast<double>(size2);
     return result;
 };
@@ -5960,11 +5960,11 @@ double get_wrong_index_path(){
         
 //     if(((is_maxima && (or_direction_as[i]!=-1)) or (!is_maxima && (or_direction_as[i]==-1)))){
 //         // if(lowGradientIndices[i] == 0){
-//         //     cout<<or_direction_as[i]<<de_direction_as[i]<<endl;
+//         //     std::cout<<or_direction_as[i]<<de_direction_as[i]<<std::endl;
 //         // }
 //         // if(lowGradientIndices[i] == 0){
 //             int idx_fp_max = atomic_fetch_add_explicit(&count_f_max, 1, memory_order_relaxed);
-//             // if(i==25026){cout<<or_direction_as[i]<<is_maxima<<endl;}
+//             // if(i==25026){std::cout<<or_direction_as[i]<<is_maxima<<std::endl;}
 //             all_max[idx_fp_max] = i;
 //         // }
         
@@ -5998,14 +5998,14 @@ void getlabel(int i){
     
     int cur = dec_label[i*2+1];
     int next_vertex;
-    // cout<<cur<<endl;
+    // std::cout<<cur<<std::endl;
     if (cur==-1){
         
         return;
     }
     else if (de_direction_as[cur]!=-1){
         
-        // cout<<cur<<" "<<de_direction_as[cur]<<endl;
+        // std::cout<<cur<<" "<<de_direction_as[cur]<<std::endl;
         int direc = de_direction_as[cur];
         int row = cur/width;
         int rank1 = cur%width;
@@ -6183,8 +6183,8 @@ int main(int argc, char** argv){
     std::string decpfilename = "decompressed_data/decp_"+filename+"_"+compressor_id+'_'+std::to_string(bound)+".bin";
     std::string fix_path = "decompressed_data/fixed_decp_"+filename+"_"+compressor_id+'_'+std::to_string(bound)+".bin";
     std::string command;
-    cout<<decpfilename<<endl;
-    cout<<bound<<", "<<std::to_string(bound)<<endl;
+    std::cout<<decpfilename<<std::endl;
+    std::cout<<bound<<", "<<std::to_string(bound)<<std::endl;
     // exit(0);
     int result;
     
@@ -6252,7 +6252,7 @@ int main(int argc, char** argv){
     
     // #pragma omp parallel for
     // for (int i=0;i<size2;++i){
-    //     // if(i%100000==0) cout<<i/100000<<endl;
+    //     // if(i%100000==0) std::cout<<i/100000<<std::endl;
     //     if(lowGradientIndices[i] == 1){
     //         continue;
     //     }
@@ -6282,7 +6282,7 @@ int main(int argc, char** argv){
 
     //  };
     // // exit(0);
-    // // cout<<"dahk"<<endl;
+    // // std::cout<<"dahk"<<std::endl;
 
     
     
@@ -6298,15 +6298,15 @@ int main(int argc, char** argv){
     //         de_direction_ds[i] = find_direction(i,decp_data,1);
         
     // };
-    // cout<<"de完成"<<endl;
+    // std::cout<<"de完成"<<std::endl;
     
     
 
 
     
     // or_label = mappath(or_mesh,or_direction_as,or_direction_ds);
-    // cout<<lowGradientIndices.size()<<endl;
-    // cout<<"map完成"<<endl;
+    // std::cout<<lowGradientIndices.size()<<std::endl;
+    // std::cout<<"map完成"<<std::endl;
     // exit(0);
     // std::ofstream file1("or"+std::to_string(width)+"_label.txt");
     // std::string result = "";
@@ -6375,23 +6375,23 @@ int main(int argc, char** argv){
     //     cpite +=1;
     //     start5 = std::chrono::high_resolution_clock::now();
         
-    //     cout<<"修复cp: "<<count_f_max<<", "<<count_f_min<<endl;
-    //     // cout<<"修复:"<<or_direction_as[25026]<<", "<<de_direction_as[25026]<<endl;
+    //     std::cout<<"修复cp: "<<count_f_max<<", "<<count_f_min<<std::endl;
+    //     // std::cout<<"修复:"<<or_direction_as[25026]<<", "<<de_direction_as[25026]<<std::endl;
     //     // if(count_f_max ==3){
     //     //     for(int i=0;i<count_f_max;i++){
-    //     //         cout<<all_max[i]<<endl;
+    //     //         std::cout<<all_max[i]<<std::endl;
                 
     //     //         for(int i:adjacency[i]){
-    //     //             cout<<i<<", "<<input_data[i]<<endl;
+    //     //             std::cout<<i<<", "<<input_data[i]<<std::endl;
     //     //         }
     //     //     }
-    //     //     cout<<endl;
+    //     //     std::cout<<std::endl;
     //     // }
     //     // if(count_f_min == 84){
     //     //     for(int i=0;i<count_f_min;i++){
-    //     //         cout<<all_min[i]<<"," ;
+    //     //         std::cout<<all_min[i]<<"," ;
     //     //     }
-    //     //     cout<<endl;
+    //     //     std::cout<<std::endl;
     //     // }
         
     //     start4 = std::chrono::high_resolution_clock::now();
@@ -6444,24 +6444,24 @@ int main(int argc, char** argv){
     //     d = end4-start5;
     //     total+= d.count();
         
-    //     // cout<<"time for fix:"<<temp<<endl;
+    //     // std::cout<<"time for fix:"<<temp<<std::endl;
     
-    //     // cout<<"time for assign value:"<<temp2<<endl;
-    //     // cout<<"time for get cp:"<<temp3<<endl;
-    //     // cout<<"time for get false cp:"<<temp5<<endl;
-    //     // cout<<"total time："<<total<<endl;
-    //     // cout<<"time for fix"<<temp/total<<endl;
+    //     // std::cout<<"time for assign value:"<<temp2<<std::endl;
+    //     // std::cout<<"time for get cp:"<<temp3<<std::endl;
+    //     // std::cout<<"time for get false cp:"<<temp5<<std::endl;
+    //     // std::cout<<"total time："<<total<<std::endl;
+    //     // std::cout<<"time for fix"<<temp/total<<std::endl;
         
-    //     // cout<<"assign value"<<temp2/total<<endl;
-    //     // cout<<"get cp"<<temp3/total<<endl;
-    //     // cout<<"get direction"<<temp1/total<<endl;
-    //     // cout<<"get false cp"<<temp5/total<<endl;
-    //     // cout<<"错误cp:"<<count_max<<","<<count_min<<endl;
-    //     // cout<<cpite<<endl;
+    //     // std::cout<<"assign value"<<temp2/total<<std::endl;
+    //     // std::cout<<"get cp"<<temp3/total<<std::endl;
+    //     // std::cout<<"get direction"<<temp1/total<<std::endl;
+    //     // std::cout<<"get false cp"<<temp5/total<<std::endl;
+    //     // std::cout<<"错误cp:"<<count_max<<","<<count_min<<std::endl;
+    //     // std::cout<<cpite<<std::endl;
     //     // exit(0);
     // }
     
-    // cout<<"开始"<<endl;
+    // std::cout<<"开始"<<std::endl;
     // init_or_data(&or_direction_as, &or_direction_ds, &de_direction_as, &de_direction_ds, &input_data, &decp_data,size2);
     std::vector<int>* dev_a = &or_direction_as;
     std::vector<int>* dev_b = &or_direction_ds;
@@ -6474,7 +6474,7 @@ int main(int argc, char** argv){
     // init_or_data(dev_a, dev_b, dev_c, dev_d, dev_e, dev_f,size2);
     std::vector<int>* dev_q = &dec_label;
     std::vector<int>* dev_m = &or_label;
-    // cout<<"开始"<<endl;
+    // std::cout<<"开始"<<std::endl;
     
     start = std::chrono::high_resolution_clock::now();
     
@@ -6495,7 +6495,7 @@ int main(int argc, char** argv){
         return 1; // 返回错误码
     }
 
-    outFilep << filename + "_" +compressor_id+"_" + std::to_string(bound) + ":" << "compression_time:" <<compression_time<<" additional_time:" <<additional_time<<std::cout <<" storrage_overhead: "<<additional_time /(compression_time+additional_time)<< std::endl;
+    outFilep << filename + "_" +compressor_id+"_" + std::to_string(bound) + ":" << "compression_time:" <<compression_time<<" additional_time:" <<additional_time <<" storrage_overhead: "<<additional_time /(compression_time+additional_time)<< std::endl;
     // finddirection:0, getfcp:1,  mappath2, fixcp:3
     
     // outFilep << std::to_string(number_of_thread)<<":" << std::endl;
@@ -6552,7 +6552,7 @@ int main(int argc, char** argv){
         diffs.push_back(indexs[i] - indexs[i - 1]);
     }
     double ratio = double(cnt)/(decp_data_copy.size());
-    cout<<cnt<<","<<ratio<<endl;
+    std::cout<<cnt<<","<<ratio<<std::endl;
     std::ofstream file(indexfilename, std::ios::binary | std::ios::out);
     if (file.is_open()) {
         file.write(reinterpret_cast<const char*>(diffs.data()), diffs.size() * sizeof(int));
@@ -6588,9 +6588,9 @@ int main(int argc, char** argv){
     double original_editSize = fs::file_size(editsfilename);
     double original_dataSize = fs::file_size(inputfilename);
     
-    // cout<<compressed_indexSize<<", "<<original_indexSize<<", "<<original_indexSize/compressed_indexSize<<endl;
-    // cout<<compressed_editSize<<", "<<original_editSize<<", "<<original_editSize/compressed_editSize<<endl;
-    // cout<<compressed_dataSize<<", "<<original_dataSize<<", "<<original_dataSize/compressed_dataSize<<endl;
+    // std::cout<<compressed_indexSize<<", "<<original_indexSize<<", "<<original_indexSize/compressed_indexSize<<std::endl;
+    // std::cout<<compressed_editSize<<", "<<original_editSize<<", "<<original_editSize/compressed_editSize<<std::endl;
+    // std::cout<<compressed_dataSize<<", "<<original_dataSize<<", "<<original_dataSize/compressed_dataSize<<std::endl;
     double overall_ratio = (original_indexSize+original_editSize+original_dataSize)/(compressed_dataSize+compressed_editSize+compressed_indexSize);
     double bitRate = 64/overall_ratio; 
     
@@ -6601,9 +6601,9 @@ int main(int argc, char** argv){
     return 0;
     double psnr = calculatePSNR(input_data, decp_data_copy, maxValue-minValue);
     double fixed_psnr = calculatePSNR(input_data, decp_data, maxValue-minValue);
-    cout<<psnr<<", "<<fixed_psnr<<endl;
-    cout<<"right: "<<right_labeled_ratio<<endl;
-    cout<<"relative range: "<<range<<endl;
+    std::cout<<psnr<<", "<<fixed_psnr<<std::endl;
+    // std::cout<<"right: "<<right_labeled_ratio<<std::endl;
+    std::cout<<"relative range: "<<range<<std::endl;
     
     // std::ofstream outFile3("../result/result_"+filename+"_"+compressor_id+"tmp3_detailed.txt", std::ios::app);
 
@@ -6633,8 +6633,8 @@ int main(int argc, char** argv){
 
     std::cout << "Variables have been appended to output.txt" << std::endl;
 
-    // cout<<overall_ratio * bitRate<<endl;
-    // cout<<overall_ratio<<","<<bitRate<<endl;
+    // std::cout<<overall_ratio * bitRate<<std::endl;
+    // std::cout<<overall_ratio<<","<<bitRate<<std::endl;
 
     
 
@@ -6652,7 +6652,7 @@ int main(int argc, char** argv){
 
     // std::cout << "The largest absolute difference is: " << max_diff << std::endl;
     // std::cout << "Duration: " << duration.count() << " seconds" << std::endl;
-    // cout<<cnt<<","<<ratio<<endl;
+    // std::cout<<cnt<<","<<ratio<<std::endl;
     
     // std::cout << "get_fcp: " << getfcp << " seconds" << std::endl;
     // std::cout << "fixtime_cp: " << fixtime_cp << " seconds" << std::endl;
