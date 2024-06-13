@@ -6719,7 +6719,7 @@ int main(int argc, char** argv){
             outFile5 << std::setprecision(17)<<"psnr: "<<psnr << std::endl;
             outFile5 <<std::setprecision(17)<< "fixed_psnr: "<<fixed_psnr << std::endl;
 
-            outFile5 << std::setprecision(17)<<"right_labeled_ratio: "<<right_labeled_ratio << std::endl;
+            // outFile5 << std::setprecision(17)<<"right_labeled_ratio: "<<right_labeled_ratio << std::endl;
             outFile5 << std::setprecision(17)<<"edit_ratio: "<<ratio << std::endl;
             outFile5 << "\n" << std::endl;
             // 关闭文件
