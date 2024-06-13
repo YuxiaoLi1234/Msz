@@ -2,7 +2,7 @@
 #SBATCH --job-name=my_job
 #SBATCH --nodes=1
 #SBATCH --time=02:00:00
-#SBATCH --qos=normal
+#SBATCH --qos=interactive
 #SBATCH --constraint=gpu
 #SBATCH --account=PAS2402
 
