@@ -10,4 +10,4 @@
 module load cuda
 
 
-parallel -j1 './helloworldomp {1} {2} {3} 0 {4};' ::: "finger,128,128,128" :::: bounds.txt ::: sz3 zfp :::: values.txt
+'./helloworldomp {1} {2} {3} 0 {4};' ::: "finger,128,128,128" :::: bounds.txt ::: sz3 zfp :::: values.txt
