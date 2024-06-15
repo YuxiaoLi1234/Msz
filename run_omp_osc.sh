@@ -9,11 +9,7 @@
 
 module load cuda
 
-
-while IFS= read -r bound; do
-    # 读取 values.txt 文件中的每一行作为参数
-    while IFS= read -r value; do
-        # 运行命令并传入参数
-        ./helloworldomp finger 128 128 128 0 "$bound" sz3 zfp "$value"
-    done < values.txt
-done < bounds.txt
+./helloworldomp finger,128,128,128 1e-6 sz3 0 32
+./helloworldomp_d finger,128,128,128 1e-6 sz3 0 32
+./helloworld_determin finger,128,128,128 1e-6 sz3 0
+./helloworld finger,128,128,128 1e-6 sz3 0
