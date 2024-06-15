@@ -6510,7 +6510,7 @@ int main(int argc, char** argv){
 
     
     inputfilename = "experiment_data/"+filename+".bin";
-    
+    auto start = std::chrono::high_resolution_clock::now();
     input_data = getdata2(inputfilename);
     auto min_it = std::min_element(input_data.begin(), input_data.end());
     auto max_it = std::max_element(input_data.begin(), input_data.end());
@@ -6556,8 +6556,10 @@ int main(int argc, char** argv){
     
     
     decp_data = getdata2(decpfilename);
+    auto ends_t = std::chrono::high_resolution_clock::now();
     // cudaMemcpyFromSymbol(&h_s, decp_data, num1*sizeof(double), 0, cudaMemcpyDeviceToHost);
-    
+    std::chrono::duration<double> duration = ends_t - start;
+    double compression_time = duration.count();
     std::vector<double> decp_data_copy(decp_data);
     
     or_direction_as.resize(size2);
@@ -6612,11 +6614,12 @@ int main(int argc, char** argv){
     auto startt = std::chrono::high_resolution_clock::now();
     auto start1 = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration = end - start1;
+    
     
     // #pragma omp parallel for
     // for(int i=0;i<1;i++){
     start1 = std::chrono::high_resolution_clock::now();
+    auto start_t = std::chrono::high_resolution_clock::now();
     find_direction(input_data, or_direction_as, or_direction_ds,1);
    
     // }
@@ -7019,7 +7022,9 @@ int main(int argc, char** argv){
         time_counter.push_back(temp_time);
         ite+=1;
     };
-    
+    end = std::chrono::high_resolution_clock::now();
+    duration = end - start_t;
+    double additional_time = duration.count();
     std::ofstream outFilepf("result/performance1_omp_"+std::to_string(bound)+"_"+".txt", std::ios::app);
     // 检查文件是否成功打开
     if (!outFilepf) {
@@ -7040,7 +7045,7 @@ int main(int argc, char** argv){
         outFilepf << std::endl;
         c1+=1;
     }
-
+    outFilepf << "compression_time:" <<compression_time<<" additional_time:" <<additional_time << std::endl;
     outFilepf << "\n"<< std::endl;
     outFilepf.close();
     exit(0);
