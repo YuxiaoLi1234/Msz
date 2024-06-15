@@ -7025,7 +7025,7 @@ int main(int argc, char** argv){
     end = std::chrono::high_resolution_clock::now();
     duration = end - start_t;
     double additional_time = duration.count();
-    std::ofstream outFilepf("result/performance1_omp_"+std::to_string(bound)+"_"+".txt", std::ios::app);
+    std::ofstream outFilepf("result/performance1_omp_deterministic"+std::to_string(bound)+"_"+".txt", std::ios::app);
     // 检查文件是否成功打开
     if (!outFilepf) {
         std::cerr << "Unable to open file for writing." << std::endl;
