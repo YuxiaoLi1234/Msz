@@ -3456,16 +3456,14 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     int num1 = width1*height1*depth1;
     int h_un_sign_as = num1;
     int h_un_sign_ds = num1;
-    // float datatransfer = 0.0;
+    
     float elapsedTime;
     int initialValue = 0;
     cout<<bound1<<endl;
-    // exit(0);
-    // float find_direciton = 0.0;
+    
     
     cout<<num1<<endl;
-    // LockFreeStack<double>* d_stacks;
-    // cudaMalloc(&d_stacks, num1 * sizeof(LockFreeStack<double>));
+    
     int *un_sign_as;
     cudaMalloc((void**)&un_sign_as, sizeof(int));
     cudaMemset(un_sign_as, 0, sizeof(int));
@@ -3475,7 +3473,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     cudaMemset(un_sign_ds, 0, sizeof(int));
 
     cout<<width1<<endl;
-    // size_t size = num1 * sizeof(int);
+    
     std::vector<int> h_all_p_max(num1);
     std::vector<int> h_all_p_min(num1);
 
@@ -3506,7 +3504,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
             std::cerr << "cudaMemcpyToSymbol failed89: " << cudaGetErrorString(cudaStatus) << std::endl;
         }
 
-    // initStackKernel<<<1,1>>>(stack_temp);
+    
 
     if (cudaStatus != cudaSuccess) {
             std::cerr << "cudaMemcpyToSymbol failed89: " << cudaGetErrorString(cudaStatus) << std::endl;
@@ -3976,7 +3974,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         mappath_path = 0.0;
         getfpath = 0.0;
         fixtime_path = 0.0;
-        finddirection = 0.0;
+        finddirection1 = 0.0;
         getfcp = 0.0;
         fixtime_cp = 0.0;
         sub_cnt = 0;
@@ -4078,6 +4076,8 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
 
         // clearStacksKernel<<<gridSize, blockSize>>>();
         cudaDeviceSynchronize();
+
+        cudaEventRecord(start, 0);
         find_direction<<<gridSize, blockSize>>>();
         cudaDeviceSynchronize();
 
