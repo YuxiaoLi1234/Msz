@@ -6188,29 +6188,29 @@ int main(int argc, char** argv){
     // exit(0);
     int result;
     
-    if(compressor_id=="sz3"){
+    // if(compressor_id=="sz3"){
         
-        command = "sz3 -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -M "+"ABS "+std::to_string(bound)+" -a";
-        std::cout << "Executing command: " << command << std::endl;
-        result = std::system(command.c_str());
-        if (result == 0) {
-            std::cout << "Compression successful." << std::endl;
-        } else {
-            std::cout << "Compression failed." << std::endl;
-        }
-    }
-    else if(compressor_id=="zfp"){
-        cpfilename = "compressed_data/compressed_"+filename+"_"+std::to_string(bound)+".zfp";
-        // zfp -i ~/msz/experiment_data/finger.bin -z compressed.zfp -d -r 0.001
-        command = "zfp -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -a "+std::to_string(bound)+" -s";
-        std::cout << "Executing command: " << command << std::endl;
-        result = std::system(command.c_str());
-        if (result == 0) {
-            std::cout << "Compression successful." << std::endl;
-        } else {
-            std::cout << "Compression failed." << std::endl;
-        }
-    }
+    //     command = "sz3 -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -M "+"ABS "+std::to_string(bound)+" -a";
+    //     std::cout << "Executing command: " << command << std::endl;
+    //     result = std::system(command.c_str());
+    //     if (result == 0) {
+    //         std::cout << "Compression successful." << std::endl;
+    //     } else {
+    //         std::cout << "Compression failed." << std::endl;
+    //     }
+    // }
+    // else if(compressor_id=="zfp"){
+    //     cpfilename = "compressed_data/compressed_"+filename+"_"+std::to_string(bound)+".zfp";
+    //     // zfp -i ~/msz/experiment_data/finger.bin -z compressed.zfp -d -r 0.001
+    //     command = "zfp -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -a "+std::to_string(bound)+" -s";
+    //     std::cout << "Executing command: " << command << std::endl;
+    //     result = std::system(command.c_str());
+    //     if (result == 0) {
+    //         std::cout << "Compression successful." << std::endl;
+    //     } else {
+    //         std::cout << "Compression failed." << std::endl;
+    //     }
+    // }
     
     
     decp_data = getdata2(decpfilename);
