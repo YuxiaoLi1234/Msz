@@ -4272,7 +4272,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         time_counter.push_back(temp);
     
     }
-    std::ofstream outFilep("result/performance1_cuda_"+std::to_string(bound1)+"_"+".txt", std::ios::app);
+    std::ofstream outFilep("result/performance1_cuda_deterministic"+std::to_string(bound1)+"_"+".txt", std::ios::app);
     // 检查文件是否成功打开
     if (!outFilep) {
         std::cerr << "Unable to open file for writing." << std::endl;
