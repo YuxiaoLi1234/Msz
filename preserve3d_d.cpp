@@ -6742,8 +6742,9 @@ int main(int argc, char** argv){
     while (count_f_max>0 or count_f_min>0){
             std::cout<<count_f_max<<", "<<count_f_min<<std::endl;
             // cpite+=1;
-            start1 = std::chrono::high_resolution_clock::now();
             initialization();
+            start1 = std::chrono::high_resolution_clock::now();
+            
             #pragma omp parallel for
 
             for(auto i = 0; i < count_f_max; i ++){
@@ -6771,7 +6772,7 @@ int main(int argc, char** argv){
                 duration = end-start1;
                 fixtime_cp += duration.count();
                 std::cout<<"fixfcp: "<<duration.count()<<std::endl;
-                exit(0);
+                
                 
                 
                 start1 = std::chrono::high_resolution_clock::now();
