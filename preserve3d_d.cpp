@@ -865,18 +865,17 @@ int find_direction (std::vector<double> data, std::vector<int>& direction_as, st
 };
 // int find_direction1 (int index,std::map<int,int> &data ,int direction){
 void applyDeltaBuffer() {
-     #pragma omp parallel
+    #pragma omp parallel for
     for(int i=0;i<size2;i++){
         if(lowGradientIndices[i]!=1 and d_deltaBuffer[i]!=-2000){
             decp_data[i] += d_deltaBuffer[i];
         }
-        
     }
     
 }
 void initialization() {
     // atomic_int init_value = -1;
-    #pragma omp parallel
+   #pragma omp parallel for
    for(int i =0;i<size2;i++){
     // std::cout<<i<<std::endl;
         d_deltaBuffer[i] = -2000.0;
