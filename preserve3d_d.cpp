@@ -865,6 +865,7 @@ int find_direction (std::vector<double> data, std::vector<int>& direction_as, st
 };
 // int find_direction1 (int index,std::map<int,int> &data ,int direction){
 void applyDeltaBuffer() {
+     #pragma omp parallel
     for(int i=0;i<size2;i++){
         if(lowGradientIndices[i]!=1 and d_deltaBuffer[i]!=-2000){
             decp_data[i] += d_deltaBuffer[i];
@@ -875,6 +876,7 @@ void applyDeltaBuffer() {
 }
 void initialization() {
     // atomic_int init_value = -1;
+    #pragma omp parallel
    for(int i =0;i<size2;i++){
     // std::cout<<i<<std::endl;
         d_deltaBuffer[i] = -2000.0;
@@ -895,17 +897,20 @@ void initialization() {
 //     return swapped;
 // }
 
-bool atomicCASDouble(double* ptr, double old_val, double new_val) {
-    // 将 double 指针转换为 uint64_t 指针
-    bool swapped = false;
-    #pragma omp critical
-    {
-        if (*ptr == old_val) {
-            *ptr = new_val;
-            swapped = true;
-        }
-    }
-    return swapped;
+// bool atomicCASDouble(double* ptr, double old_val, double new_val) {
+//     // 将 double 指针转换为 uint64_t 指针
+//     bool swapped = false;
+//     #pragma omp critical
+//     {
+//         if (*ptr == old_val) {
+//             *ptr = new_val;
+//             swapped = true;
+//         }
+//     }
+//     return swapped;
+// }
+bool atomicCASDouble(double* ptr, double* old_val, double new_val) {
+    return __atomic_compare_exchange(ptr, old_val, &new_val, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 }
 
 int swap(int index, double delta){
@@ -914,7 +919,7 @@ int swap(int index, double delta){
     double new_edit = delta;
     double old_edit = d_deltaBuffer[index];
     while (new_edit > old_edit) {
-        if (atomicCASDouble(&d_deltaBuffer[index],old_edit, new_edit)) {
+        if (atomicCASDouble(&d_deltaBuffer[index],&old_edit, new_edit)) {
             break;
         }
         old_edit = d_deltaBuffer[index];
@@ -6742,8 +6747,9 @@ int main(int argc, char** argv){
     while (count_f_max>0 or count_f_min>0){
             std::cout<<count_f_max<<", "<<count_f_min<<std::endl;
             // cpite+=1;
-            initialization();
             start1 = std::chrono::high_resolution_clock::now();
+            initialization();
+            
             
             #pragma omp parallel for
 
@@ -6757,21 +6763,22 @@ int main(int argc, char** argv){
                 
                 
                 
-            #pragma omp parallel for
-            for(auto i = 0; i < count_f_min; i ++){
+                #pragma omp parallel for
+                for(auto i = 0; i < count_f_min; i ++){
 
-                int critical_i = all_min[i];
-                fix_maxi_critical(critical_i,1);
+                    int critical_i = all_min[i];
+                    fix_maxi_critical(critical_i,1);
 
-            }
+                }
                 
                 applyDeltaBuffer();
-                // counter[3]+=1;
-                
                 end = std::chrono::high_resolution_clock::now();
                 duration = end-start1;
                 fixtime_cp += duration.count();
                 std::cout<<"fixfcp: "<<duration.count()<<std::endl;
+
+                exit(0);
+                
                 
                 
                 
