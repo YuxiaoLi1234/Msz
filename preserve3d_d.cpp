@@ -6611,6 +6611,7 @@ int main(int argc, char** argv){
     int cnt=0;
  
     std::vector<int> counter(4,0);  
+    std::vector<double> tmp;  
 
     // finddirection:0, getfcp:1,  mappath2, fixcp:3
     
@@ -6669,6 +6670,7 @@ int main(int argc, char** argv){
     // exit(0);
     getfcp+=duration.count();
     std::cout<<"10cigetfcp: "<<duration.count()<<std::endl;
+    tmp.push_back(duration.count());
     counter[1]+=1;
     mappath_path=0.0;
     
@@ -6681,6 +6683,7 @@ int main(int argc, char** argv){
     duration = end - start1;
     mappath_path+=duration.count();
     // }
+    tmp.push_back(duration.count());
     
     
     
@@ -6774,8 +6777,19 @@ int main(int argc, char** argv){
                 end = std::chrono::high_resolution_clock::now();
                 duration = end-start1;
                 fixtime_cp += duration.count();
+                tmp.push_back(duration.count());
                 std::cout<<"fixfcp: "<<duration.count()<<std::endl;
 
+
+                std::ofstream outFileptp("result/fixfcp_nyx.txt", std::ios::app);
+                // 检查文件是否成功打开
+                if (!outFileptp) {
+                    std::cerr << "Unable to open file for writing." << std::endl;
+                    return 0; // 返回错误码
+                }
+                
+                outFileptp <<std::to_string(number_of_thread)<< ":" <<duration.count()<<  std::endl;
+                outFileptp.close();
                 exit(0);
                 
                 
