@@ -2334,7 +2334,7 @@
 // // extern void init_or_data(std::vector<int> *a, std::vector<int> *b,std::vector<int> *c, std::vector<int> *d, std::vector<double> *input_data,std::vector<double> *decp_data, int num);
 // // extern int fix_process(std::vector<double>& decp_data);
 // // std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection
-// extern void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection);
+// extern void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,std::vector<int>* dec_label1,std::vector<int>* or_label1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection);
 // // extern void update_de_direction(std::vector<int> *c,std::vector<int> *d);
 // extern void fix_process(std::vector<int> *c,std::vector<int> *d, std::vector<double> *decp_data1, float &datatransfer, float &finddirection, float &getfcp, float &fixtime_cp,int &cpite);
 // extern void mappath1(std::vector<int> *label, std::vector<int> *direction_as, std::vector<int> *direction_ds, float &finddirection, float &mappath_path, float &datatransfer,int type=0);
@@ -3906,7 +3906,7 @@ double bound;
 
 std::vector<int> find_low(){
     std::vector<int> lowGradientIndices(size2, 0);
-    
+    return lowGradientIndices;
     const double threshold = 1e-16; // 梯度阈值
     // 遍历三维数据计算梯度
     for (int i = 0; i < width; ++i) {
@@ -5987,7 +5987,7 @@ double get_wrong_index_path(){
 // extern __global__ void init_or_data1(int numElements);
 // extern void init_or_data(std::vector<int> *a, std::vector<int> *b,std::vector<int> *c, std::vector<int> *d, std::vector<double> *input_data,std::vector<double> *decp_data, int num);
 // extern int fix_process(std::vector<double>& decp_data);
-extern void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection);
+extern void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,std::vector<int> *dec_label1,std::vector<int> *or_label1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection);
 // extern void update_de_direction(std::vector<int> *c,std::vector<int> *d);
 extern void fix_process(std::vector<int> *c,std::vector<int> *d, std::vector<double> *decp_data1, float &datatransfer, float &finddirection, float &getfcp, float &fixtime_cp,int &cpite);
 extern void mappath1(std::vector<int> *label, std::vector<int> *direction_as, std::vector<int> *direction_ds, float &finddirection, float &mappath_path, float &datatransfer,int type=0);
@@ -6188,29 +6188,29 @@ int main(int argc, char** argv){
     // exit(0);
     int result;
     
-    // if(compressor_id=="sz3"){
+    if(compressor_id=="sz3"){
         
-    //     command = "sz3 -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -M "+"ABS "+std::to_string(bound)+" -a";
-    //     std::cout << "Executing command: " << command << std::endl;
-    //     result = std::system(command.c_str());
-    //     if (result == 0) {
-    //         std::cout << "Compression successful." << std::endl;
-    //     } else {
-    //         std::cout << "Compression failed." << std::endl;
-    //     }
-    // }
-    // else if(compressor_id=="zfp"){
-    //     cpfilename = "compressed_data/compressed_"+filename+"_"+std::to_string(bound)+".zfp";
-    //     // zfp -i ~/msz/experiment_data/finger.bin -z compressed.zfp -d -r 0.001
-    //     command = "zfp -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -a "+std::to_string(bound)+" -s";
-    //     std::cout << "Executing command: " << command << std::endl;
-    //     result = std::system(command.c_str());
-    //     if (result == 0) {
-    //         std::cout << "Compression successful." << std::endl;
-    //     } else {
-    //         std::cout << "Compression failed." << std::endl;
-    //     }
-    // }
+        command = "sz3 -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -M "+"ABS "+std::to_string(bound)+" -a";
+        std::cout << "Executing command: " << command << std::endl;
+        result = std::system(command.c_str());
+        if (result == 0) {
+            std::cout << "Compression successful." << std::endl;
+        } else {
+            std::cout << "Compression failed." << std::endl;
+        }
+    }
+    else if(compressor_id=="zfp"){
+        cpfilename = "compressed_data/compressed_"+filename+"_"+std::to_string(bound)+".zfp";
+        // zfp -i ~/msz/experiment_data/finger.bin -z compressed.zfp -d -r 0.001
+        command = "zfp -i " + inputfilename + " -z " + cpfilename +" -o "+decpfilename + " -d " + " -1 " + std::to_string(size2)+" -a "+std::to_string(bound)+" -s";
+        std::cout << "Executing command: " << command << std::endl;
+        result = std::system(command.c_str());
+        if (result == 0) {
+            std::cout << "Compression successful." << std::endl;
+        } else {
+            std::cout << "Compression failed." << std::endl;
+        }
+    }
     
     
     decp_data = getdata2(decpfilename);
@@ -6481,7 +6481,7 @@ int main(int argc, char** argv){
     double compressed_dataSize = fs::file_size(cpfilename);
     double br = (compressed_dataSize*8)/size2;
     start = std::chrono::high_resolution_clock::now();
-    init_inputdata(dev_a, dev_b, dev_c, dev_d, dev_e, dev_f, width, height, depth, dev_g, bound,datatransfer,finddirection);
+    init_inputdata(dev_a, dev_b, dev_c, dev_d, dev_e, dev_f, dev_m,dev_q,width, height, depth, dev_g, bound,datatransfer,finddirection);
     ends = std::chrono::high_resolution_clock::now();
     duration = ends - start;
     double additional_time = duration.count();
@@ -6494,23 +6494,59 @@ int main(int argc, char** argv){
         return 1; // 返回错误码
     }
 
-    outFilep << filename + "_" +compressor_id+"_" + std::to_string(bound) + ":" << "compression_time:" <<compression_time<<" additional_time:" <<additional_time << std::endl;
+    outFilep << filename + "_" +compressor_id+"_" + std::to_string(range) + ":" << " compression_time:" <<compression_time<<" additional_time:" <<additional_time <<" ratio:"<<additional_time/(additional_time+compression_time)<< std::endl;
     // finddirection:0, getfcp:1,  mappath2, fixcp:3
     
     // outFilep << std::to_string(number_of_thread)<<":" << std::endl;
     
-    outFilep << "\n"<< std::endl;
-    outFilep.close();
-    return 0;
-    // std::chrono::duration<double> durationt = endt - start;
-    cout<<"duration: "<<duration.count()<<endl;
-    cout<<"find_direction:"<<finddirection*1000<<endl;
-    cout<<"getfcp:"<<getfcp<<endl;
-    cout<<"mappath_path:"<<mappath_path<<endl;
-    cout<<"getfpath:"<<getfpath<<endl;
-    cout<<"fixfcp:"<<fixtime_cp<<endl;
-    cout<<"fixpath:"<<fixtime_path<<endl;
-    exit(0);
+    
+    
+    // return 0;
+    // std::ofstream outFile11("max_label"+filename+std::to_string(bound)+".txt");
+
+    // if (outFile11.is_open()) {
+    //     outFile11 << std::setprecision(std::numeric_limits<double>::max_digits10);
+
+    //     for (int i=0;i<size2;i++) {
+
+    //         if(or_label[i*2]==-1){
+    //             outFile11 << i << std::endl;
+    //         }
+    //         else if(or_label[i*2]==i){
+    //             outFile11 << -1 << std::endl;
+    //         }
+    //         else{
+    //             outFile11 << or_label[i*2] << std::endl;
+    //         }
+            
+    //         if(or_label[i*2+1]==-1){
+    //             outFile11 << i << std::endl;
+    //         }
+    //         else if(or_label[i*2+1]==i){
+    //             outFile11 << -1 << std::endl;
+    //         }
+    //         else{
+    //             outFile11 << or_label[i*2+1] << std::endl;
+    //         }
+
+            
+            
+    //     }
+    //     outFile11.close();
+    // } else {
+    //     std::cerr << "Unable to open the file for writing." << std::endl;
+    // }
+    
+    
+    // // std::chrono::duration<double> durationt = endt - start;
+    // cout<<"duration: "<<duration.count()<<endl;
+    // cout<<"find_direction:"<<finddirection*1000<<endl;
+    // cout<<"getfcp:"<<getfcp<<endl;
+    // cout<<"mappath_path:"<<mappath_path<<endl;
+    // cout<<"getfpath:"<<getfpath<<endl;
+    // cout<<"fixfcp:"<<fixtime_cp<<endl;
+    // cout<<"fixpath:"<<fixtime_path<<endl;
+    // exit(0);
     
     
     // cout<<"wancheng"<<endl;
@@ -6524,112 +6560,7 @@ int main(int argc, char** argv){
     // cout<<"djal"<<endl;
     // 10412175,6513917
     // 10117038,5735947
-    float calculatermappath = 0.0;
-    cout<<"map开始"<<endl;
-    mappath1(dev_m, dev_a, dev_b,finddirection, mappath_path, datatransfer, 1);
-    cout<<"map结束"<<endl;
     
-
-    mappath1(dev_q, dev_c, dev_d,finddirection, mappath_path, datatransfer);
-    cout<<"map结束"<<endl;
-    
-    
-    size_t size = or_label.size();
-    // std::ofstream outFile11("label/or_label_"+filename+".bin", std::ios::binary);
-
-    // if (!outFile11.is_open()) {
-    //     throw std::runtime_error("Unable to open file for writing.");
-    // }
-    // outFile11.write(reinterpret_cast<const char*>(&size), sizeof(size));
-
-    // if (size > 0) {
-    //     outFile11.write(reinterpret_cast<const char*>(or_label.data()), size * sizeof(int));
-    // }
-
-    // outFile11.close();
-    
-    // std::ofstream outFile12("label/dec_label_"+filename+'_'+compressor_id+'_'+std::to_string(bound)+".bin", std::ios::binary);
-    // // // 写入大小
-    // outFile12.write(reinterpret_cast<const char*>(&size), sizeof(size));
-
-    // // 写入vector的数据
-    // cout<<size<<endl;
-    // if (size > 0) {
-    //     outFile12.write(reinterpret_cast<const char*>(dec_label.data()), size * sizeof(int));
-    // }
-    // cout<<"写完了"<<endl;
-    
-    // // exit(0);
-    // // 关闭文件
-    // outFile12.close();
-    
-    auto startt = std::chrono::high_resolution_clock::now();
-    double right_labeled_ratio = 1-get_wrong_index_path();
-    // cout<<right_labeled_ratio<<endl;
-    // exit(0);
-    auto end = std::chrono::high_resolution_clock::now();
-    duration = end - startt;
-    
-    getfpath+=duration.count();
-    // std::vector<double>* dev_f = &decp_data;
-    std::vector<double> decp_data_c1(decp_data); 
-
-    std::vector<double>* dev_k = &decp_data_c1;
-    // float counter_getfcp = 0.0;
-    float counter_fixtime_cp = 0.0;
-    // float counter_finddirection = 0.0;
-    // for(int i=0;i<10;i++){
-    //     cout<<i<<endl;
-    //     decp_data_c1 = decp_data;
-    double data_transfer_temp = datatransfer;
-    double fixtime_cp_temp = fixtime_cp;
-    double finddirection_temp = finddirection;
-    double getfcp_temp = getfcp;
-    double mappath_path_temp = mappath_path;
-    auto start3 = std::chrono::high_resolution_clock::now();
-    double getfpath_sub = 0;
-    double whole = 0;
-    
-    double fixtime_path_sub = 0;
-    int cpite = 0;
-    
-    std::vector<double> temp_time1;
-    startt = std::chrono::high_resolution_clock::now();
-    fix_process(dev_c,dev_d,dev_f,datatransfer, finddirection, getfcp, fixtime_cp,cpite);
-    duration = std::chrono::high_resolution_clock::now()-startt;
-    cout<<"fix: "<<fixtime_cp<<endl;
-    
-    ite +=1;
-    // }
-    // exit(0);
-    //     cout<<"1000find:"<<counter_finddirection<<endl;
-    //     cout<<"1000getfcp:"<<counter_getfcp<<endl;
-    //     cout<<"1000fixcp:"<<counter_fixtime_cp<<endl;
-    // }
-    // cout<<"1000find:"<<counter_finddirection<<endl;
-    // cout<<"1000getfcp:"<<counter_getfcp<<endl;
-    // cout<<"10fixcp:"<<counter_fixtime_cp<<endl;
-    // exit(0);
-    // cout<<"djaldjas"<<endl;
-    
-    
-    
-    // init_or_data(dev_a, dev_b, dev_c, dev_d, dev_e, dev_f,size2);
-        
-    // cout<<"第一次修复结束"<<endl;
-    // // exit(0);
-    // end1 = std::chrono::high_resolution_clock::now();
-    // end2 = std::chrono::high_resolution_clock::now();
-    // duration1 = end1 - start1;
-    // // fixtime += duration1.count();
-    // duration1 = end2 - start2;
-    // fixtime_cp += duration1.count();
-    
-    // start2 = std::chrono::high_resolution_clock::now();
-        
-        
-    // };
-    // de_mesh.get_criticle_points();
     
         
     
@@ -6685,421 +6616,13 @@ int main(int argc, char** argv){
     //     }
     // }
     // exit(0);
-    dev_a = &or_direction_as;
-    dev_b = &or_direction_ds;
-    dev_c = &de_direction_as;
-    dev_d = &de_direction_ds;
-    // for(int i=0;i<1000;i++){
-    mappath1(dev_q, dev_c, dev_d, finddirection, mappath_path, datatransfer);
-    // }
     
-    // exit(0);
-    // cout<<"djaldjas"<<endl;
-    
-    // dec_label = mappath(de_mesh,de_direction_as,de_direction_ds);
-    startt = std::chrono::high_resolution_clock::now();
-    get_wrong_index_path();
-    // get_false_criticle_points();
-    
-    
-    
-    end = std::chrono::high_resolution_clock::now();
-    duration = end - startt;
-    getfpath+=duration.count();
-    getfpath_sub+=duration.count();
-    temp_time1.push_back(getfcp-getfcp_temp);
-    temp_time1.push_back(fixtime_cp-fixtime_cp_temp);
-    // temp_time_ratio.push_back(fixtime_cp/whole);
-    temp_time1.push_back(fixtime_path_sub);
-    // temp_time_ratio.push_back(fixtime_path/whole);
-    temp_time1.push_back(finddirection - finddirection_temp);
-    // temp_time_ratio.push_back(searchdirection_time/whole);
-    temp_time1.push_back(mappath_path-mappath_path_temp);
-    // temp_time_ratio.push_back(searchtime/whole);
-    temp_time1.push_back(getfpath_sub);
-    duration = end - start3;
-    temp_time1.push_back(duration.count());
-    temp_time1.push_back(cpite);
-    time_counter.push_back(temp_time1);
-    while (wrong_index_as.size()>0 or wrong_index_ds.size()>0 or count_f_max>0 or count_f_min>0){
-        std::vector<double> temp_time;
-
-        data_transfer_temp = datatransfer;
-        fixtime_cp_temp = fixtime_cp;
-        finddirection_temp = finddirection;
-        getfcp_temp = getfcp;
-        mappath_path_temp = mappath_path;
-        
-        getfpath_sub = 0;
-        whole = 0;
-        
-        fixtime_path_sub = 0;
-        // searchdirection_time = 0;
-        // searchtime = 0;
-        // getfcp = 0;
-        // get_path = 0;
-        // whole = 0;
-        // std::vector<float> temp_time;
-        // std::vector<float> temp_time_ratio;
-
-        cout<<"修复路径: "<<wrong_index_as.size()<<","<<wrong_index_ds.size()<<endl;
-        
-        
-        // startt = std::chrono::high_resolution_clock::now();
-        
-        
-        // if(wrong_index_as.size()==1050){
-        //     for(int i:wrong_index_as){
-        //         cout<<i<<endl;
-        //     }
-        // }
-        startt = std::chrono::high_resolution_clock::now();
-        auto start_sub = std::chrono::high_resolution_clock::now();
-        // #pragma omp parallel for
-        for(int i =0;i< wrong_index_as.size();i++){
-            int j = wrong_index_as[i];
-            if(lowGradientIndices[j] == 1)
-            {
-                continue;
-                }
-            // cout<<j<<endl;
-            fixpath(j,0);
-        };
-        // cout<<"danfjka1"<<endl;
-        // #pragma omp parallel for
-        for(int i =0;i< wrong_index_ds.size();i++){
-            int j = wrong_index_ds[i];
-            if(lowGradientIndices[j] == 1){
-                continue;}
-            // cout<<j<<endl;
-            fixpath(j,1);
-        };
-        
-        
-        end = std::chrono::high_resolution_clock::now();
-        duration = end - startt;
-        fixtime_path+=duration.count();
-        fixtime_path_sub+=duration.count();
-        // cout<<"danfjka"<<endl;
-        
-        
-        
-        // get_false_criticle_points();
-        
-        
-        // searchdirection_time+=duration1.count();
-        
-   
-        
-        //start2 = std::chrono::high_resolution_clock::now();
-        
-        int cpite = 0;
-        
-        // while(count_f_max>0 or count_f_min>0){
-        //     // cout<<"修复路径时:"<<count_f_max<<", "<<count_f_min<<endl;
-            
-        //     cpite +=1;
-        //     start5 = std::chrono::high_resolution_clock::now();
-        //     start4 = std::chrono::high_resolution_clock::now();
-        // //     if(count_f_max ==0 and count_f_min==5){
-        // //     for(int i=0;i<count_f_min;i++){
-        // //         cout<<all_min[i]<<"," ;
-        // //     }
-        // //     cout<<endl;
-        // // }
-        //     #pragma omp parallel for
-        //     for(auto i = 0; i < count_f_max; i ++){
-        //         int critical_i = all_max[i];
-        //         fix_maxi_critical(critical_i,0);
-        //     }
-            
-            
-            
-        //     #pragma omp parallel for
-        //     for(auto i = 0; i < count_f_min; i ++){
-        //         int critical_i = all_min[i];
-        //         fix_maxi_critical(critical_i,1);
-        //     }
-            
-            
-            
-        //     end4 = std::chrono::high_resolution_clock::now();
-        //     d = end4-start4;
-        //     fixtime_cp += d.count();
-            
-            
-        
-        //     #pragma omp parallel for
-        //     for (int i=0;i<size2;++i){
-        //         if(lowGradientIndices[i] == 1){
-        //             continue;
-        //         }
-        //             de_direction_as[i] = find_direction(i,decp_data,0);
-                
-        //             de_direction_ds[i] = find_direction(i,decp_data,1);
-                
-        //     };
-        //     start2 = std::chrono::high_resolution_clock::now();
-            
-        //     get_false_criticle_points();
-        //     end2 = std::chrono::high_resolution_clock::now();
-        //     duration1 = end2 - start2;
-        //     getfcp += duration1.count();
-        
-
-        // }
-        
-        // dev_c = &de_direction_as;
-        // dev_d = &de_direction_ds;
-        // if(wrong_index_ds.size()==4){
-        //     cout<<"之前："<<endl;
-        //     cout<<de_direction_ds[8058]<<", "<<or_direction_ds[8058]<<endl;
-        // }
-        dev_f = &decp_data;
-        
-        fix_process(dev_c,dev_d,dev_f,datatransfer, finddirection, getfcp, fixtime_cp,cpite);
-        
-        
-        // start2 = std::chrono::high_resolution_clock::now();
-        // de_mesh.values = decp_data;
-        // #pragma omp parallel for
-        // for (int i=0;i<size2;++i){
-        //     if(lowGradientIndices[i] == 1){
-        //         continue;
-        //     }
-        //     de_direction_as[i] = find_direction(i,decp_data,0);
-        //     de_direction_ds[i] = find_direction(i,decp_data,1);
-        // };
-        
-        
-        // dec_label = mappath(de_mesh,de_direction_as,de_direction_ds);
-        
-        // end2 = std::chrono::high_resolution_clock::now();
-        // duration1 = end2 - start2;
-        
-        // searchdirection_time+=duration1.count();
-        
-        
-        
-        // cout<<de_direction_ds[3030]<<endl;
-        
-        dev_q = &dec_label;
-        mappath1(dev_q,dev_c, dev_d,finddirection, mappath_path, datatransfer);
-        
-        startt = std::chrono::high_resolution_clock::now();
-        
-        get_wrong_index_path();
-        end = std::chrono::high_resolution_clock::now();
-        duration = end - startt;
-        getfpath+=duration.count();
-        getfpath_sub+=duration.count();
-        // end2 = std::chrono::high_resolution_clock::now();
-        // duration1 = end2-start2;
-        // get_path+=duration1.count();
-        // duration1 = end2-startt;
-        // whole += duration1.count();
-        // duration1 = end1-start1;
-        
-        // cout<<"dfahlhql: "<<whole<<endl;
-        // temp_time.push_back(getfcp);
-        // temp_time_ratio.push_back(getfcp/whole);
-        // temp_time.push_back(fixtime_cp);
-        // temp_time_ratio.push_back(fixtime_cp/whole);
-        // temp_time.push_back(fixtime_path);
-        // temp_time_ratio.push_back(fixtime_path/whole);
-        // temp_time.push_back(searchdirection_time);
-        // temp_time_ratio.push_back(searchdirection_time/whole);
-        // temp_time.push_back(searchtime);
-        // temp_time_ratio.push_back(searchtime/whole);
-        // temp_time.push_back(get_path);
-        // temp_time_ratio.push_back(get_path/whole);
-        // record1.push_back(temp_time);
-        // record_ratio.push_back(temp_time_ratio);
-        auto end_sub = std::chrono::high_resolution_clock::now();
-        duration = end_sub-start_sub;
-        temp_time.push_back(getfcp-getfcp_temp);
-        temp_time.push_back(fixtime_cp-fixtime_cp_temp);
-        // temp_time_ratio.push_back(fixtime_cp/whole);
-        temp_time.push_back(fixtime_path_sub);
-        // temp_time_ratio.push_back(fixtime_path/whole);
-        temp_time.push_back(finddirection - finddirection_temp);
-        // temp_time_ratio.push_back(searchdirection_time/whole);
-        temp_time.push_back(mappath_path-mappath_path_temp);
-        // temp_time_ratio.push_back(searchtime/whole);
-        temp_time.push_back(getfpath_sub);
-
-        temp_time.push_back(duration.count());
-        temp_time.push_back(cpite);
-        time_counter.push_back(temp_time);
-        ite+=1;
-    };
-    // cout<<"修复结束"<<endl;
-    end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> duration1 = end - start;
-    // std::ofstream outFilep("result/performance1_cuda_"+filename+"_"+std::to_string(bound)+"_"+compressor_id+".txt", std::ios::app);
-    // // 检查文件是否成功打开
-    // if (!outFilep) {
-    //     std::cerr << "Unable to open file for writing." << std::endl;
-    //     return 1; // 返回错误码
-    // }
-    // // finddirection:0, getfcp:1,  mappath2, fixcp:3
-    
-    // // outFilep << std::to_string(number_of_thread)<<":" << std::endl;
-    // outFilep << "duration: "<<duration1.count() << std::endl;
-    // outFilep << "getfcp: "<<getfcp << std::endl;
-    
-    // outFilep << "fixtime_cp: "<<fixtime_cp << std::endl;
-    
-    // outFilep << "fixtime_path: " << fixtime_path << std::endl;
-    // outFilep << "mappath: " << mappath_path << std::endl;
-    
-    // outFilep << "finddirection: " << finddirection << std::endl;
-    
-    // outFilep << "getfpath:" << getfpath << std::endl;
-    // outFilep << "iteration number:" << ite+1 << std::endl;
-    // // outFilep << "edit_ratio: "<< ratio << std::endl;  
-    // int c = 0;  
-    // for (const auto& row : time_counter) {
-    //     outFilep << "iteration: "<<c<<": ";
-    //     for (size_t i = 0; i < row.size(); ++i) {
-    //         outFilep << row[i];
-    //         if (i != row.size() - 1) { // 不在行的末尾时添加逗号
-    //             outFilep << ", ";
-    //         }
-    //     }
-    //     // 每写完一行后换行
-    //     outFilep << std::endl;
-    //     c+=1;
-    // }
-    // outFilep << "\n"<< std::endl;
-    
-    
-    
-    // // return 0;
-    // // de_mesh.get_criticle_points();
-    
-    cout<<"duration: "<<duration1.count()<<endl;
-    // cout<<"data_transfer:"<<datatransfer<<endl;
-    // cout<<"find_direction:"<<finddirection<<endl;
-    // cout<<"getfcp:"<<getfcp<<endl;
-    // cout<<"mappath_path:"<<mappath_path<<endl;
-    // cout<<"getfpath:"<<getfpath*1000<<endl;
-    // cout<<"fixfcp:"<<fixtime_cp<<endl;
-    // cout<<"fixpath:"<<fixtime_path*1000<<endl;
-    std::ofstream outFile13("label/fixed_dec_label_"+filename+"_"+compressor_id+'_'+std::to_string(bound)+".bin");
-
-    if (!outFile13.is_open()) {
-        throw std::runtime_error("Unable to open file for writing.");
-    }
-
-    // 获取vector的大小
-    
-
-    // 写入大小
-    outFile13.write(reinterpret_cast<const char*>(&size), sizeof(size));
-
-    // 写入vector的数据
-    if (size > 0) {
-        outFile13.write(reinterpret_cast<const char*>(&dec_label[0]), size * sizeof(int));
-    }
-
-    // 关闭文件
-    outFile13.close();
-    // return 0;
-   
-    // std::cout << "fixtime: " << fixtime << " seconds" << std::endl;
-    // std::cout << "get_fcp: " << getfcp/duration.count() << " seconds" << std::endl;
-    // std::cout << "fixtime_cp: " << fixtime_cp/duration.count() << " seconds" << std::endl;
-    // std::cout << "fixtime_path: " << fixtime_path/duration.count() << " seconds" << std::endl;
-    // std::cout << "searchtime: " << searchtime << " seconds" << std::endl;
-    // std::cout << "finddirection: " << searchdirection_time/duration.count() << " seconds" << std::endl;
-    // std::cout << "getfpath:" << get_path/duration.count() << std::endl;
-    // std::cout << "iteration number:" << ite << std::endl;
-    // std::ofstream file2("dec_label_iteration内"+std::to_string(width)+".txt");
-    // result = "";
-    // for (const auto& p : dec_label) {
-    //     result+="[";
-    //     result+=std::to_string(p.first)+","+std::to_string(p.second);
-    //     result+="],";
-    // }
-    // file2 << result << "\n";
-    // file2 << "#"<<",";
-    
-    // result = "[";
-    // for( int i:de_mesh.maxi){
-        
-    //     result+=std::to_string(i);
-    //     result+=",";
-    // }
-    // result+="]";
-    // file2 << result;
-    // file2 << "\n";
-    // file2 << "#"<<",";
-    // result = "[";
-    // for( int i:de_mesh.mini){
-        
-    //     result+=std::to_string(i);
-    //     result+=",";
-    // }
-    // result+="]";
-    // file2 << result;
-
-    // // // 关闭文件
-    // file2.close();
-            // std::ofstream file1("or_label.txt");
-
-    // // 写入数据
-    
-    // for (const auto& p : or_label) {
-        
-    //     file1 << p.first << ", " << p.second << "\n";
-    // }
-    
-    
-    // file1 << "#"<<",";
-    // for( int i:or_mesh.maxi){
-    //     file1 << i << ",";
-    // }
-    // file1 << "\n";
-    // file1 << "#"<<",";
-    // for( int i:or_mesh.mini){
-    //     file1 << i << ",";
-    // }
-    // // 关闭文件
-    // file1.close();
-    // std::ofstream outFile("minlabel_"+std::to_string(width)+".txt");
-
+    // std::ofstream outFile(fix_path);
+    // // std::ofstream outFile("values.bin", std::ios::binary | std::ios::out);
     // if (outFile.is_open()) {
-    //     outFile << std::setprecision(std::numeric_limits<double>::max_digits10);
-
-    //     for (int i=0;i<decp_data.size();i++) {
-            
-    //         outFile << dec_label[i*2] << std::endl;
-    //     }
-    //     outFile.close();
-    // } else {
-    //     std::cerr << "Unable to open the file for writing." << std::endl;
+    //     outFile.write(reinterpret_cast<const char*>(decp_data.data()), decp_data.size() * sizeof(double));
     // }
-
-    // std::ofstream outFile1("original_minlabel_"+std::to_string(width)+".txt");
-
-    // if (outFile1.is_open()) {
-    //     outFile1 << std::setprecision(std::numeric_limits<double>::max_digits10);
-
-    //     for (int i=0;i<decp_data.size();i++) {
-            
-    //         outFile1 << or_label[i*2] << std::endl;
-    //     }
-    //     outFile1.close();
-    // } else {
-    //     std::cerr << "Unable to open the file for writing." << std::endl;
-    // }
-    std::ofstream outFile(fix_path);
-    // std::ofstream outFile("values.bin", std::ios::binary | std::ios::out);
-    if (outFile.is_open()) {
-        outFile.write(reinterpret_cast<const char*>(decp_data.data()), decp_data.size() * sizeof(double));
-    }
-    outFile.close();
+    // outFile.close();
     // start = std::chrono::high_resolution_clock::now();
     std::vector<double> indexs;
     std::vector<double> edits;
@@ -7165,6 +6688,19 @@ int main(int argc, char** argv){
     // cout<<compressed_dataSize<<", "<<original_dataSize<<", "<<original_dataSize/compressed_dataSize<<endl;
     double overall_ratio = (original_indexSize+original_editSize+original_dataSize)/(compressed_dataSize+compressed_editSize+compressed_indexSize);
     double bitRate = 64/overall_ratio; 
+    std::cout << std::setprecision(17)<< "OCR: "<<overall_ratio << std::endl;
+    std::cout << std::setprecision(17)<<"CR: "<<original_dataSize/compressed_dataSize << std::endl;
+    std::cout << std::setprecision(17)<<"OBR: "<<bitRate << std::endl;
+    std::cout << std::setprecision(17)<<"BR: "<< (compressed_dataSize*8)/size2 << std::endl;
+    outFilep <<  "original_compressed_size:" <<compressed_dataSize<< " additional_size:" <<compressed_editSize+compressed_indexSize<<" ratio:"<<(compressed_editSize+compressed_indexSize)/compressed_dataSize<< std::endl;
+    outFilep<< std::setprecision(17)<< "OCR: "<<overall_ratio << " CR: "<<original_dataSize/compressed_dataSize << " OBR: "<<bitRate << " BR: "<< (compressed_dataSize*8)/size2 << std::endl;
+    // finddirection:0, getfcp:1,  mappath2, fixcp:3
+    
+    // outFilep << std::to_string(number_of_thread)<<":" << std::endl;
+    
+    outFilep << "\n"<< std::endl;
+    outFilep.close();
+    exit(0);
     
     
 
@@ -7172,35 +6708,35 @@ int main(int argc, char** argv){
     double psnr = calculatePSNR(input_data, decp_data_copy, maxValue-minValue);
     double fixed_psnr = calculatePSNR(input_data, decp_data, maxValue-minValue);
     cout<<psnr<<", "<<fixed_psnr<<endl;
-    cout<<"right: "<<right_labeled_ratio<<endl;
+    // cout<<"right: "<<right_labeled_ratio<<endl;
     cout<<"relative range: "<<range<<endl;
     
-    std::ofstream outFile3("../result/result_"+filename+"_"+compressor_id+"tmp3_detailed.txt", std::ios::app);
+    // std::ofstream outFile3("../result/result_"+filename+"_"+compressor_id+"tmp3_detailed.txt", std::ios::app);
 
-    // 检查文件是否成功打开
-    if (!outFile3) {
-        std::cerr << "Unable to open file for writing." << std::endl;
-        return 1; // 返回错误码
-    }
+    // // 检查文件是否成功打开
+    // if (!outFile3) {
+    //     std::cerr << "Unable to open file for writing." << std::endl;
+    //     return 1; // 返回错误码
+    // }
 
     
-    outFile3 << std::to_string(bound)<<":" << std::endl;
-    outFile3 << std::setprecision(17)<< "related_error: "<<range << std::endl;
-    outFile3 << std::setprecision(17)<< "OCR: "<<overall_ratio << std::endl;
-    outFile3 << std::setprecision(17)<<"CR: "<<original_dataSize/compressed_dataSize << std::endl;
-    outFile3 << std::setprecision(17)<<"OBR: "<<bitRate << std::endl;
-    outFile3 << std::setprecision(17)<<"BR: "<< (compressed_dataSize*8)/size2 << std::endl;
-    outFile3 << std::setprecision(17)<<"psnr: "<<psnr << std::endl;
-    outFile3 << std::setprecision(17)<<"fixed_psnr: "<<fixed_psnr << std::endl;
+    // outFile3 << std::to_string(bound)<<":" << std::endl;
+    // outFile3 << std::setprecision(17)<< "related_error: "<<range << std::endl;
+    // outFile3 << std::setprecision(17)<< "OCR: "<<overall_ratio << std::endl;
+    // outFile3 << std::setprecision(17)<<"CR: "<<original_dataSize/compressed_dataSize << std::endl;
+    // outFile3 << std::setprecision(17)<<"OBR: "<<bitRate << std::endl;
+    // outFile3 << std::setprecision(17)<<"BR: "<< (compressed_dataSize*8)/size2 << std::endl;
+    // outFile3 << std::setprecision(17)<<"psnr: "<<psnr << std::endl;
+    // outFile3 << std::setprecision(17)<<"fixed_psnr: "<<fixed_psnr << std::endl;
 
-    outFile3 << std::setprecision(17)<<"right_labeled_ratio: "<<right_labeled_ratio << std::endl;
-    outFile3 << std::setprecision(17)<<"edit_ratio: "<<ratio << std::endl;
-    outFile3 << std::setprecision(17)<<"relative: "<<range << std::endl;
-    outFile3 << "\n" << std::endl;
-    // 关闭文件
-    outFile3.close();
+    // outFile3 << std::setprecision(17)<<"right_labeled_ratio: "<<right_labeled_ratio << std::endl;
+    // outFile3 << std::setprecision(17)<<"edit_ratio: "<<ratio << std::endl;
+    // outFile3 << std::setprecision(17)<<"relative: "<<range << std::endl;
+    // outFile3 << "\n" << std::endl;
+    // // 关闭文件
+    // outFile3.close();
 
-    std::cout << "Variables have been appended to output.txt" << std::endl;
+    // std::cout << "Variables have been appended to output.txt" << std::endl;
 
     // cout<<overall_ratio * bitRate<<endl;
     // cout<<overall_ratio<<","<<bitRate<<endl;
@@ -7288,7 +6824,7 @@ int main(int argc, char** argv){
             outFile5 << std::setprecision(17)<<"psnr: "<<psnr << std::endl;
             outFile5 <<std::setprecision(17)<< "fixed_psnr: "<<fixed_psnr << std::endl;
 
-            outFile5 << std::setprecision(17)<<"right_labeled_ratio: "<<right_labeled_ratio << std::endl;
+            //outFile5 << std::setprecision(17)<<"right_labeled_ratio: "<<right_labeled_ratio << std::endl;
             outFile5 << std::setprecision(17)<<"edit_ratio: "<<ratio << std::endl;
             outFile5 << "\n" << std::endl;
             // 关闭文件
