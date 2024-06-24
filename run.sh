@@ -10,6 +10,7 @@
 module load parallel
 mv nyx2.bin ./experiment_data/
 mv ivt.bin ./experiment_data/
+mv jet_cropped.bin ./experiment_data/
 # 定义开始和结束的值以及数值的数量
 nvcc -c kernel3d.cu -o kernel.o
 g++-12 -std=c++17 -O3 -g -fopenmp -c preserve3d.cpp -o hello2.o
