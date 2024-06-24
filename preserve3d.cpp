@@ -6697,6 +6697,15 @@ int main(int argc, char** argv){
     std::cout << std::setprecision(17)<<"OBR: "<<bitRate << std::endl;
     std::cout << std::setprecision(17)<<"BR: "<< (compressed_dataSize*8)/size2 << std::endl;
     
+    outFilep <<  "original_compressed_size:" <<compressed_dataSize<< " additional_size:" <<compressed_editSize+compressed_indexSize<<" ratio:"<<(compressed_editSize+compressed_indexSize)/compressed_dataSize<< std::endl;
+    outFilep<< std::setprecision(17)<< "OCR: "<<overall_ratio << " CR: "<<original_dataSize/compressed_dataSize << " OBR: "<<bitRate << " BR: "<< (compressed_dataSize*8)/size2 << std::endl;
+    // finddirection:0, getfcp:1,  mappath2, fixcp:3
+    
+    // outFilep << std::to_string(number_of_thread)<<":" << std::endl;
+    
+    outFilep << "\n"<< std::endl;
+    outFilep.close();
+    exit(0);
     
     
 
