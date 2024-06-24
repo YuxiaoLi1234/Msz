@@ -4020,8 +4020,8 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     cudaMemcpy(dec_label1->data(), dec_l, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(or_label1->data(), or_l, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     
-    saveVectorToBinFile(dec_label1, "dec_jet_"+std::to_string(bound)+".bin");
-    saveVectorToBinFile(or_label1, "or_jet_"+std::to_string(bound)+".bin");
+    // saveVectorToBinFile(dec_label1, "dec_jet_"+std::to_string(bound)+".bin");
+    // saveVectorToBinFile(or_label1, "or_jet_"+std::to_string(bound)+".bin");
     
     cudaMemcpyToSymbol(count_p_max, &initialValue, sizeof(int));
     cudaMemcpyToSymbol(count_p_min, &initialValue, sizeof(int));
