@@ -3762,7 +3762,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     
     
     
-    while(host_count_f_min>0 or host_count_f_max>0){
+    while(host_count_f_min>0 or host_count_f_min>0){
         
             
             // std::cout<<host_count_f_min<<","<<host_count_f_max<<std::endl;
