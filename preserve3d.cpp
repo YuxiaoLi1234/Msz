@@ -6501,8 +6501,8 @@ int main(int argc, char** argv){
     
     // outFilep << std::to_string(number_of_thread)<<":" << std::endl;
     
-    outFilep << "\n"<< std::endl;
-    outFilep.close();
+    // outFilep << "\n"<< std::endl;
+    // outFilep.close();
     
     // return 0;
     // std::ofstream outFile11("max_label"+filename+std::to_string(bound)+".txt");
@@ -6706,7 +6706,6 @@ int main(int argc, char** argv){
     outFilep << "\n"<< std::endl;
     outFilep.close();
     exit(0);
-    
     
 
 
