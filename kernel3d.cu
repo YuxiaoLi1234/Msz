@@ -24,7 +24,7 @@
 #include <utility>
 #include <iomanip>
 #include <chrono>
-
+#include <thrust/device_vector.h>
 using std::count;
 using std::cout;
 using std::endl;
@@ -40,6 +40,8 @@ __device__ int height;
 __device__ int depth;
 __device__ int num;
 __device__ int* adjacency;
+__device__ double* d_deltaBuffer1;
+__device__ int* number_array;
 __device__ int* all_max; 
 __device__ int* all_min;
 __device__ int* all_p_max; 
@@ -47,16 +49,19 @@ __device__ int* all_p_min;
 __device__ int* unsigned_n;
 __device__ int count_max;
 __device__ int count_min;
-
 __device__ int count_f_max;
 __device__ int count_f_min;
 __device__ int count_p_max;
 __device__ int count_p_min;
 __device__ int* maxi;
+
 __device__ int* mini;
 __device__ double bound;
+__device__ int edit_count;
 __device__ int* or_maxi;
 __device__ int* or_mini;
+__device__ double* d_deltaBuffer;
+__device__ int* id_array;
 __device__ int* or_label;
 __device__ int* dec_label;
 __device__ int* lowgradientindices;
@@ -68,6 +73,75 @@ __device__ int maxNeighbors = 12;
 __device__ int direction_to_index_mapping[12][3] = {{0,1,0},{0,-1,0},{1,0,0},{-1,0,0},{-1,1,0},{1,-1,0},{0,0, -1},  {0,-1, 1}, {0,0, 1},  {0,1, -1},  {-1,0, 1},   {1, 0,-1}};   
 
 
+
+template<typename T>
+class LockFreeStack {
+public:
+
+    __device__ void push(const T& value) {
+        Node* new_node = (Node*)malloc(sizeof(Node));
+        new_node->value = value;
+        Node* old_head = head;
+        do {
+            new_node->next = old_head;
+        } while (atomicCAS(reinterpret_cast<unsigned long long*>(&head),
+                           reinterpret_cast<unsigned long long>(old_head),
+                           reinterpret_cast<unsigned long long>(new_node)) !=
+                 reinterpret_cast<unsigned long long>(old_head));
+        
+    }
+
+    __device__ bool pop(T& value) {
+        Node* old_head = head;
+        if (old_head == nullptr) {
+            return false;
+        }
+        Node* new_head;
+        do {
+            new_head = old_head->next;
+        } while (atomicCAS(reinterpret_cast<unsigned long long*>(&head),
+                           reinterpret_cast<unsigned long long>(old_head),
+                           reinterpret_cast<unsigned long long>(new_head)) !=
+                 reinterpret_cast<unsigned long long>(old_head));
+        value = old_head->value;
+        free(old_head);
+        return true;
+    }
+    __device__ void clear() {
+        Node* current = head;
+        while (current != nullptr) {
+            Node* next = current->next;
+            delete current;
+            current = next;
+        }
+        head = nullptr;
+    }
+    __device__ int size() const {
+        int count = 0;
+        Node* current = head;
+        while (current != nullptr) {
+            count++;
+            
+            current = current->next;
+        }
+        return count;
+    }
+
+    __device__ bool isEmpty() const {
+        return head == nullptr;
+    }
+
+private:
+    struct Node {
+        T value;
+        Node* next;
+    };
+
+    Node* head = nullptr;
+};
+
+__device__ LockFreeStack<double> d_stacks;
+__device__ LockFreeStack<int> id_stacks;
 __device__ int getDirection(int x, int y, int z){
     
     for (int i = 0; i < 12; ++i) {
@@ -80,13 +154,15 @@ __device__ int getDirection(int x, int y, int z){
 // 26302898,3378820
 // 27930227,32438238
 }
+
+
 __device__ int from_direction_to_index1(int cur, int direc){
     
     if (direc==-1) return cur;
     int x = cur % width;
     int y = (cur / width) % height;
     int z = (cur/(width * height))%depth;
-    // printf("%d %d\n", row, rank1);
+    
     if (direc >= 1 && direc <= 12) {
         int delta_row = direction_to_index_mapping[direc-1][0];
         int delta_col = direction_to_index_mapping[direc-1][1];
@@ -96,8 +172,7 @@ __device__ int from_direction_to_index1(int cur, int direc){
         int next_row = x + delta_row;
         int next_col = y + delta_col;
         int next_dep = z + delta_dep;
-        // printf("%d \n", next_row * width + next_col);
-        // return next_row * width + next_col + next_dep* (height * width);
+        
         return next_row + next_col * width + next_dep* (height * width);
     }
     else {
@@ -105,6 +180,45 @@ __device__ int from_direction_to_index1(int cur, int direc){
     }
     // return 0;
 };
+
+__global__ void copy_stack_to_array(int* index_array, double* edit_array, int* size, int type=0) {
+    
+    if (threadIdx.x == 0) {
+        int index = 0;
+        int id;
+        double value;
+
+        // 计算栈的大小
+        
+        edit_count = id_stacks.size();
+        *size = id_stacks.size();
+        printf("%d\n",id_stacks.size());
+        if(type==0) return;
+        // 复制index_stack的内容
+        while (id_stacks.pop(id)) {
+            index_array[index] = id;
+            index++;
+        }
+
+        // 重置index
+        index = 0;
+
+        // 复制edit_stack的内容
+        while (d_stacks.pop(value)) {
+            edit_array[index] = value;
+            index++;
+        }
+    }
+}
+
+__global__ void copy_array_to_stack(int* index_array, double* edit_array, int size) {
+    if (threadIdx.x == 0) {
+        for (int i = 0; i < size; i++) {
+            // id_stacks.push(index_array[i]);
+            // d_stacks.push(edit_array[i]);
+        }
+    }
+}
 
 __device__ void find_direction2 (int type, int index){
     double *data;
@@ -154,9 +268,6 @@ __device__ void find_direction2 (int type, int index){
 
     int dep_diff = (largetst_index /(width * height))%depth - (index /(width * height))%depth;
     direction_as[index] = getDirection(row_diff, col_diff,dep_diff);
-    // if(index==8058 and type==0){
-    //     printf("%d %d \n" ,direction_ds[index],or_mini[index]);
-    // }
     
     
 
@@ -171,10 +282,7 @@ __device__ void find_direction2 (int type, int index){
         if(lowgradientindices[i]==1){
             continue;
         }
-        // if(i==8186 and index==8058 and type==0){
-        //     printf("%.20f %.20f\n",data[i]-data[index],data[8057]-data[index]);
-        //     // cout<<data[i]<<", "<<data[index]<<", "<<data[8057]<<endl;
-        // }
+        
         if((data[i]<data[largetst_index] or (data[i]==data[largetst_index] and i<largetst_index))){
             mini = data[i]-data[index];
             
@@ -203,6 +311,13 @@ __device__ void find_direction2 (int type, int index){
     
     
     
+}
+
+__global__ void clearStacksKernel() {
+    // int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    // if (idx < num) {
+        d_stacks.clear();
+    // }
 }
 __global__ void find_direction (int type=0){
     int index = threadIdx.x + blockIdx.x * blockDim.x;
@@ -393,9 +508,7 @@ __global__ void iscriticle(){
         
         if((is_maxima && or_maxi[i]!=-1) or (!is_maxima && or_maxi[i]==-1)){
             int idx_fp_max = atomicAdd(&count_f_max, 1);
-            // if(i==6345199){
-            //     printf("%d %d \n",is_maxima,or_maxi[i]);
-            // }
+            
             all_max[idx_fp_max] = i;
             
         }
@@ -494,9 +607,124 @@ __global__ void computeAdjacency() {
     }
 }
 
+__device__ unsigned long long doubleToULL(double value) {
+    return *reinterpret_cast<unsigned long long*>(&value);
+}
+
+__device__ double ULLToDouble(unsigned long long value) {
+    return *reinterpret_cast<double*>(&value);
+}
+
+
+
+// __device__ double atomicCASDouble(double* address, double val) {
+//     // uint64_t* address_as_ull = (uint64_t*)address;
+//     unsigned long long* addr_as_ull = (unsigned long long*)address;
+//     // 将 double 值转换为 uint64_t
+//     unsigned long long old_val_as_ull = doubleToULL(*addr_as_ull);
+//     unsigned long long new_val_as_ull = doubleToULL(val);
+//     // uint64_t old_val_as_ull = *address_as_ull;
+//     // uint64_t new_val_as_ull = __double_as_longlong(val);
+//     // uint64_t assumed;
+
+   
+//     // assumed = old_val_as_ull;
+//     // 使用 atomicCAS 进行原子比较和交换操作
+//     // old_val_as_ull = atomicCAS((unsigned long long int*)address_as_ull, (unsigned long long int)old_val_as_ull, (unsigned long long int)new_val_as_ull);
+//     atomicCAS(addr_as_ull,old_val_as_ull,new_val_as_ull);
+
+//     // 返回交换之前的旧值
+    
+//     return __longlong_as_double(old_val_as_ull);
+// }
+
+// __device__ double atomicCASDouble(double* addr, double expected, double desired) {
+//     // 将double类型的值转换为unsigned long long
+//     unsigned long long* addr_as_ull = (unsigned long long*)addr;
+//     unsigned long long expected_as_ull = doubleToULL(expected);
+//     unsigned long long desired_as_ull = doubleToULL(desired);
+    
+//     // 使用atomicCAS进行原子操作
+//     unsigned long long old_as_ull = atomicCAS(addr_as_ull, expected_as_ull, desired_as_ull);
+    
+//     // 返回旧值，转换回double类型
+//     return ULLToDouble(old_as_ull);
+// }
+
+
+__device__ double atomicCASDouble(double* address, double val) {
+    // 将 double 指针转换为 uint64_t 指针
+    uint64_t* address_as_ull = (uint64_t*)address;
+    // 将 double 值转换为 uint64_t
+    uint64_t old_val_as_ull = *address_as_ull;
+    uint64_t new_val_as_ull = __double_as_longlong(val);
+    uint64_t assumed;
+
+
+    assumed = old_val_as_ull;
+    // 使用自定义的 atomicCAS 进行原子比较和交换操作
+    // return atomicCAS((unsigned long long int*)address, (unsigned long long int)compare, (unsigned long long int)val);
+    
+    old_val_as_ull = atomicCAS((unsigned long long int*)address_as_ull, (unsigned long long int)assumed, (unsigned long long int)new_val_as_ull);
+    // } while (assumed != old_val_as_ull);
+
+    // 返回交换之前的旧值
+    return __longlong_as_double(old_val_as_ull);
+}
+void saveVectorToBinFile(const std::vector<int>* vecPtr, const std::string& filename) {
+    if (vecPtr == nullptr) {
+        std::cerr << "输入的指针为空" << std::endl;
+        return;
+    }
+
+    // 打开文件输出流，以二进制模式
+    std::ofstream outfile(filename, std::ios::binary);
+    if (!outfile) {
+        std::cerr << "无法打开文件 " << filename << " 进行写入" << std::endl;
+        return;
+    }
+
+    // 获取向量的大小并写入文件
+    size_t size = vecPtr->size();
+    outfile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+
+    // 处理并写入向量的数据
+    for (size_t i = 0; i < size; ++i) {
+        int value = (*vecPtr)[i];
+        if (value == -1) {
+            int index = static_cast<int>(i/2);
+            outfile.write(reinterpret_cast<const char*>(&index), sizeof(index));
+            
+        } else {
+            outfile.write(reinterpret_cast<const char*>(&value), sizeof(value));
+        }
+    }
+
+
+    // 关闭文件
+    outfile.close();
+}
+__device__ int swap(int index, double delta){
+    int update_successful = 0;
+    double oldValue = d_deltaBuffer[index];
+    while (update_successful==0) {
+        double current_value = d_deltaBuffer[index];
+        if (delta > current_value) {
+            double swapped = atomicCASDouble(&d_deltaBuffer[index], delta);
+            if (swapped == current_value) {
+                update_successful = 1;
+                
+            } else {
+                oldValue = swapped;
+            }
+        } else {
+            update_successful = 1; // 退出循环，因为 delta 不再大于 current_value
+    }
+    }
+}
+
 __global__ void allocateDeviceMemory() {
-    if (threadIdx.x == 0) { // 仅在一个线程上执行
-        // printf("%d %d \n", threadIdx.x,num );
+    if (threadIdx.x == 0) { 
         all_max = new int[num];
         
         all_min = new int[num];
@@ -505,20 +733,34 @@ __global__ void allocateDeviceMemory() {
 }
 
 
-__global__ void fix_maxi_critical1(int direction){
+__global__ void clearStacksKernel(LockFreeStack<double> stacks) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx < num) {
+        stacks.clear();
+    }
+}
+
+
+
+__global__ void fix_maxi_critical1(int direction, int cnt){
     int index_f = blockIdx.x * blockDim.x + threadIdx.x;
     
     
         
+    double delta;
     
+    int index;
+    int next_vertex;
+   
     if (direction == 0 && index_f<count_f_max && lowgradientindices[all_max[index_f]]==0){
         
-        int index = all_max[index_f];
-        // printf("%d\n",index);
+        index = all_max[index_f];
+        // printf("%.17lf %d\n",decp_data[index],index);
         if (or_maxi[index]!=-1){
             // printf("%d\n",index);
             // find_direction2(1,index);
-            int next_vertex = from_direction_to_index1(index,or_maxi[index]);
+            
+            next_vertex = from_direction_to_index1(index,or_maxi[index]);
             
             int smallest_vertex = next_vertex;
             double threshold = -DBL_MAX;
@@ -553,6 +795,7 @@ __global__ void fix_maxi_critical1(int direction){
             double d = (decp_data[index] - input_data[index] + bound )/2.0;
             double d1 = ((input_data[next_vertex] + bound) - decp_data[next_vertex])/2.0;
             double diff1 = (bound - (input_data[next_vertex]-decp_data[index]))/2.0;
+            
             // double diff = ((input_data[next_vertex]-decp_data_copy[next_vertex]) - (input_data[next_vertex]-decp_data[index]))/2.0;
             // double d = (decp_data[index] - input_data[index] + (input_data[index]-decp_data_copy[index]))/2.0;
             // double d1 = ((input_data[next_vertex] + (input_data[next_vertex]-decp_data_copy[next_vertex])) - decp_data[next_vertex])/2.0;
@@ -568,23 +811,33 @@ __global__ void fix_maxi_critical1(int direction){
             //     // cout<<"smallest_vertex: "<<smallest_vertex<<", "<<decp_data[smallest_vertex]<<endl;
             //     // cout<<"diff: "<<d<<","<<"d: "<<d<<endl;
             // }
+            
             if(decp_data[index]<decp_data[next_vertex] or (decp_data[index]==decp_data[next_vertex] and index<next_vertex)){
                 
-                de_direction_as[index]=or_maxi[index];
+                // de_direction_as[index]=or_maxi[index];
             
                 return;
             }
             
             if(d>=1e-16 ){
                 
-                if(decp_data[index]==decp_data[next_vertex])
+                if(abs(decp_data[index]-decp_data[next_vertex])<1e-16)
                     {
                         
                         while(abs(input_data[index]-decp_data[index]+d)>bound and d>=2e-16){
                             d/=2;
                         }
                         if (abs(input_data[index]-decp_data[index]+d)<=bound){
-                            decp_data[index] -= d;
+                            delta = -d;
+                            double oldValue = d_deltaBuffer[index];
+                        
+                        if (delta > oldValue) {
+                                swap(index, delta);
+                            }
+
+                        // printf("%.17lf", delta);
+                            // d_stacks[index].push(delta);
+                        
                         }
                     }
                 else{
@@ -633,9 +886,20 @@ __global__ void fix_maxi_critical1(int direction){
                                 
                             // }
                             
-                            decp_data[index] -= d;
+                            // decp_data[index] -= d;
+                            delta = -d;
+                            // int idx = atomicAdd(&number_array[index], 1);
+            
+                            // d_deltaBuffer1[12*index+idx] = delta;
+
+                            double oldValue = d_deltaBuffer[index];
                             
-                            
+                            if (delta > oldValue) {
+                                    
+                                    swap(index, delta);
+                                    
+                                } 
+                            // d_stacks[index].push(delta);
                                             
                         }
                         // else if(abs(input_data[next_vertex]-(decp_data[next_vertex]+d1))<=bound and decp_data[index]>=decp_data[next_vertex] and d1>0){
@@ -678,12 +942,58 @@ __global__ void fix_maxi_critical1(int direction){
                     if(abs(input_data[index]-decp_data[next_vertex]+t)<=bound and t>=1e-16){
                             
                             
-                            decp_data[index] = decp_data[next_vertex] - t;
+                            // decp_data[index] = decp_data[next_vertex] - t;
                             // decp_data[next_vertex] = t;
+                            delta = decp_data[index]-(decp_data[next_vertex] - t);
+                            // int oldValue = d_deltaBuffer[index];
+                            // double expected = oldValue;
+                            
+                            double oldValue = d_deltaBuffer[index];
+                            // double expected = oldValue;
+                                
+                                
+                            // if(delta>10000){
+                            //         printf("chuchuo");
+                            //     }
+                            
+                            // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                            // d_stacks.push(delta);
+                            // id_stacks.push(index);
+                            //printf("ok");
+                            if (delta > oldValue) {
+                                    swap(index, delta);
+                                    
+                                    // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                                }
+                           
                         }
                     else{
                         
-                        decp_data[index] = input_data[index] - bound;
+                        // decp_data[index] = input_data[index] - bound;
+                        delta = decp_data[index]-(input_data[index] - bound);
+                       
+                        
+                            double oldValue = d_deltaBuffer[index];
+                        // // double expected = oldValue;
+                            
+                            
+                        // // if(delta>10000){
+                        // //         printf("chuchuo");
+                        // //     }
+                        
+                        // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                        // d_stacks.push(delta);
+                        // id_stacks.push(index);
+                        //printf("ok");
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                
+                                swap(index,delta);
+                                
+                                
+                            }
+                        // d_stacks[index].push(delta);
                         
                     }
                     // if(count_f_max==1){
@@ -698,7 +1008,7 @@ __global__ void fix_maxi_critical1(int direction){
                     //         // cout<<"diff: "<<d<<","<<"d: "<<d<<endl;
                     //     }
                 }
-                else if(decp_data[index]==decp_data[next_vertex]){
+                else if(abs(decp_data[index]-decp_data[next_vertex])<1e-16){
                     // double bound1 = abs(input_data[index]-decp_data[index]);
                     //
                     double d = (bound - (input_data[index]-decp_data[index]))/2.0;
@@ -712,12 +1022,51 @@ __global__ void fix_maxi_critical1(int direction){
                     // double d = 1e-16;
                     if(abs(input_data[index]-decp_data[index]+d)<=bound){
                         
-                        decp_data[index]-=d;
+                        // decp_data[index]-=d;
+                        delta = -d;
+                        
+                        
+                        
+                            double oldValue = d_deltaBuffer[index];
+                        
+                        // d_stacks.push(delta);
+                        // id_stacks.push(index);
+                        //printf("ok");
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(index, delta);
+                                
+                            }
+                        // d_stacks[index].push(delta);
+                        
                     }
                     
                     else if(abs(input_data[next_vertex]-decp_data[next_vertex]-d1)<=bound){
                         // if(next_vertex==78){cout<<"在这里21"<<endl;}
-                        decp_data[next_vertex]+=d1;
+                        // decp_data[next_vertex]+=d1;
+                        delta = d1;
+                        
+                        
+                        double oldValue = d_deltaBuffer[next_vertex];
+                        // // double expected = oldValue;
+                            
+                            
+                        // // if(delta>10000){
+                        // //         printf("chuchuo");
+                        // //     }
+                        
+                        // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                        // d_stacks.push(delta);
+                        // id_stacks.push(next_vertex);
+                        //printf("ok");
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(index, delta);
+                                
+                            }
+                        
                     }
                 }
                 
@@ -769,15 +1118,32 @@ __global__ void fix_maxi_critical1(int direction){
             //     // cout<<"smallest_vertex: "<<smallest_vertex<<", "<<decp_data[smallest_vertex]<<endl;
             //     // cout<<"diff: "<<d<<","<<"d: "<<d<<endl;
             // }
+            
             if(decp_data[index]>decp_data[largest_index] or(decp_data[index]==decp_data[largest_index] and index>largest_index)){
-                de_direction_as[index] = -1;
+                return;
             }
             if(d>=1e-16){
                 
                 if (decp_data[index]<=decp_data[largest_index]){
-                    if(abs(input_data[largest_index]-decp_data[index]+d)){
+                    if(abs(input_data[largest_index]-decp_data[index]+d)<bound){
                         // if(largest_index==66783){cout<<"在这里17"<<endl;}
-                        decp_data[largest_index] = decp_data[index]-d;
+                        // decp_data[largest_index] = decp_data[index]-d;
+                        delta = (decp_data[index]-d)-decp_data[largest_index];
+                        
+                        
+                        
+                        double oldValue = d_deltaBuffer[largest_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(largest_index);
+                        //printf("ok");
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(largest_index, delta);
+                                
+                            }
+                        // d_stacks[largest_index].push(delta);
+                        
                     }
                 }
                 
@@ -790,7 +1156,22 @@ __global__ void fix_maxi_critical1(int direction){
                     // if(index==78){
                     //         cout<<"在这里1"<<endl;
                     //     }
-                    decp_data[index] = input_data[index] + bound;
+                    // decp_data[index] = input_data[index] + bound;
+                    delta = (input_data[index] + bound)-decp_data[index];
+                    
+                        
+                         double oldValue = d_deltaBuffer[index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(index);
+                        //printf("ok");
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                
+                                swap(index, delta);
+                                
+                            }
+                    // d_stacks[index].push(delta);
                 }
                     
             }
@@ -810,9 +1191,12 @@ __global__ void fix_maxi_critical1(int direction){
     }
     
     else if (direction != 0 && index_f<count_f_min && lowgradientindices[all_min[index_f]]==0){
-        int index = all_min[index_f];
+        index = all_min[index_f];
+        // decp_data[index] = -1;
+        // return ;
         if (or_mini[index]!=-1){
             // find_direction2(1,index);
+            
             int next_vertex= from_direction_to_index1(index,or_mini[index]);
             
             double diff = (bound - (input_data[next_vertex]-decp_data[index]))/2.0;
@@ -821,7 +1205,7 @@ __global__ void fix_maxi_critical1(int direction){
             
             double d1 = (decp_data[next_vertex]-input_data[next_vertex]+bound)/2.0;
             if(decp_data[index]>decp_data[next_vertex] or (decp_data[index]==decp_data[next_vertex] and index>next_vertex)){
-                de_direction_ds[index]=or_mini[index];
+                // de_direction_ds[index]=or_mini[index];
                 return;
             }
 
@@ -835,9 +1219,10 @@ __global__ void fix_maxi_critical1(int direction){
             //     cout<<"d1: "<<d1<<endl;
             // }
             
+            
             if(diff>=1e-16){
                 
-                if(decp_data[index]==decp_data[next_vertex]){
+                if(abs(decp_data[index]-decp_data[next_vertex])<1e-16){
                     
                       
                     
@@ -847,15 +1232,51 @@ __global__ void fix_maxi_critical1(int direction){
                         
                         if(abs(input_data[next_vertex]-decp_data[index]+diff)<=bound and diff>=1e-16){
                             // if(index==344033 and count_f_min==2){cout<<"在这里22"<<d<<endl;}
-                            decp_data[next_vertex]= decp_data[index]-diff;
+                            // decp_data[next_vertex]= decp_data[index]-diff;
+                            delta = (decp_data[index]-diff) - decp_data[next_vertex];
+                            
+                            
+                            double oldValue = d_deltaBuffer[next_vertex];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(next_vertex);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                
+                                swap(next_vertex, delta);
+                                
+                            }
+                            // d_stacks[next_vertex].push(delta);
                         }
                         else if(d1>=1e-16){
                             // if(index==344033 and count_f_min==2){cout<<"在这里23"<<d<<endl;}
-                            decp_data[next_vertex]-=d1;
+                            delta = -d1;
+                    
+                            
+                            double oldValue = d_deltaBuffer[next_vertex];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(next_vertex);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                
+                                swap(next_vertex,delta);
+                            }
                         }
                         else if(d>=1e-16){
                             // if(index==344033 and count_f_min==2){cout<<"在这里24"<<d<<endl;}
-                            decp_data[index]+=d;
+                            
+                            delta = d;
+                            
+                            double oldValue = d_deltaBuffer[index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(index);
+                        if (delta > oldValue) {
+                                
+                                
+                                swap(index, delta);
+                            }
+                            
                         }
 
                     
@@ -878,7 +1299,22 @@ __global__ void fix_maxi_critical1(int direction){
                                     diff*=2;
                                 }
                                 if(abs(input_data[next_vertex]-decp_data[index]+diff)<=bound){
-                                    decp_data[next_vertex] = decp_data[index]-diff;
+                                    // decp_data[next_vertex] = decp_data[index]-diff;
+                                    delta = (decp_data[index]-diff) - decp_data[next_vertex];
+                                    
+                                    
+                                    
+                                    double oldValue = d_deltaBuffer[next_vertex];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(next_vertex);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                
+                                swap(next_vertex, delta);
+                                
+                                
+                            }
                                 }
                                 // if(index == 6595 and count_f_min==5){
                                 //     cout<<"在这里1！"<< diff <<", "<<index<<", "<<decp_data[index]<<","<<input_data[index]<<","<<input_data[next_vertex]<<endl;
@@ -902,17 +1338,38 @@ __global__ void fix_maxi_critical1(int direction){
                                 }
                                 // if(count_f_min<=12){cout<<"在这里2！"<<abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<<"," <<d1<< endl;}
                                 if(abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<=bound and d1>=1e-16){
-                                    decp_data[next_vertex]-=d1;
+                                    // decp_data[next_vertex]-=d1;
+                                    delta = -d1;
+                                    
+                            
+                            
+                            double oldValue = d_deltaBuffer[next_vertex];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(next_vertex);
+                        if (delta > oldValue) {
+                                
+                                swap(next_vertex, delta);
+                                
+                            }
                                 }
-                                // else{
-                                //     decp_data[index] += d;
-                                // }
-                                // else{
-                                // decp_data[next_vertex] = input_data[next_vertex] - bound;}
+                                
                                 
                             }
                             else{
-                                decp_data[next_vertex] = input_data[next_vertex] - bound;
+                                // decp_data[next_vertex] = input_data[next_vertex] - bound;
+                                delta = (input_data[next_vertex] - bound)- decp_data[next_vertex];
+                                
+                            
+                            
+                            double oldValue = d_deltaBuffer[next_vertex];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(next_vertex);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(next_vertex, delta);
+                                
+                            }
                                 // if(index == 6595 and count_f_min==5){cout<<"在这里3！"<<abs(input_data[next_vertex]-bound-decp_data[next_vertex])<< endl;}
                             }
                             
@@ -954,12 +1411,38 @@ __global__ void fix_maxi_critical1(int direction){
                             // if(index==949999){cout<<"在这里24"<<endl;}
                             // decp_data[index] = decp_data[next_vertex];
                             // if(next_vertex==66783){cout<<"在这里14"<<endl;}
-                            decp_data[next_vertex] = decp_data[index]-t;
+                            // decp_data[next_vertex] = decp_data[index]-t;
+                            delta = (decp_data[index]-t) - decp_data[next_vertex];
+                            
+                            
+                            
+                            double oldValue = d_deltaBuffer[next_vertex];
+                            
+                        // d_stacks.push(delta);
+                        // id_stacks.push(next_vertex);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(next_vertex, delta);
+                                
+                            }
                             
                         }
                         else{
                             // if(index==949999){cout<<"在这里29"<<endl;}
-                            decp_data[index] = input_data[index] + bound;
+                            // decp_data[index] = input_data[index] + bound;
+                            delta = (input_data[index] + bound) - decp_data[index];
+                            
+                            double oldValue = d_deltaBuffer[index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(index, delta);
+                                
+                            }
+                            
                         }
                 }
                 
@@ -973,11 +1456,36 @@ __global__ void fix_maxi_critical1(int direction){
                     // }   
                     // double d = 1e-16;
                     if(abs(input_data[index]-decp_data[index]-d)<=bound){
-                        decp_data[index]+=d;
+                        // decp_data[index]+=d;
+                        delta = d;
+                        
+                        
+                            double oldValue = d_deltaBuffer[index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(index, delta);
+                                
+                            }
+                        // d_stacks[index].push(delta);
                     }
                     else if(abs(input_data[next_vertex]-decp_data[next_vertex]+d)<=bound){
                         // if(next_vertex==66783){cout<<"在这里13"<<endl;}
-                        decp_data[next_vertex]-=d;
+                        // decp_data[next_vertex]-=d;
+                        delta = -d;
+                        
+                        
+                        double oldValue = d_deltaBuffer[next_vertex];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(next_vertex);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(next_vertex, delta);
+                                
+                            }
                     }
                 }
             }
@@ -1014,8 +1522,9 @@ __global__ void fix_maxi_critical1(int direction){
             //     cout<<"d: "<<d<<endl;
                 
             // }
+         
             if(decp_data[index]<decp_data[largest_index] or (decp_data[index]==decp_data[largest_index] and index<largest_index)){
-                de_direction_ds[index] = -1;
+                // de_direction_ds[index] = -1;
                 return;
             }
             
@@ -1031,7 +1540,20 @@ __global__ void fix_maxi_critical1(int direction){
                         //     cout<<"在这里2！"<<endl;
                         // }
                         
-                        decp_data[index] -= diff;
+                        // decp_data[index] -= diff;
+                        delta = -diff;
+                        
+                        
+                            double oldValue = d_deltaBuffer[index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(index, delta);
+                                
+                            }
+                        // d_stacks[index].push(delta);
                     }
                     
                     
@@ -1043,8 +1565,22 @@ __global__ void fix_maxi_critical1(int direction){
                 if (decp_data[index]>=decp_data[largest_index]){
                     
                     // if(index==66783){cout<<"在这里15"<<endl;}
-                    decp_data[index] = input_data[index] - bound;
+                    // decp_data[index] = input_data[index] - bound;
+                    delta = ((input_data[index] - bound) - decp_data[index]);
+                    
+                   
+                            double oldValue = d_deltaBuffer[index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(index, delta);
+                                
+                            }
+                    // d_stacks[index].push(delta);
                 }   
+                
     
             }
 
@@ -1054,6 +1590,10 @@ __global__ void fix_maxi_critical1(int direction){
 
         
     }    
+    
+
+    
+
     return;
 }
 
@@ -1329,15 +1869,15 @@ __global__ void fix_maxi_critical5(int direction){
     }    
     return;
 };
-__global__ void fix_maxi_critical2(int direction){
-    int index_f = blockIdx.x * blockDim.x + threadIdx.x;
+__global__ void fix_maxi_critical2(int direction, int id){
+    
     
     
         
     
-    if (direction == 0 && index_f<count_f_max && lowgradientindices[all_max[index_f]]==0){
+    if (direction == 0 && lowgradientindices[id]==0){
         
-        int index = all_max[index_f];
+        int index = all_max[id];
       
 	// printf("%d\n",index);
         if (or_maxi[index]!=-1){
@@ -1351,12 +1891,10 @@ __global__ void fix_maxi_critical2(int direction){
             
             for(int j=0;j<12;j++){
                 int i = adjacency[index*12+j];
-                if(i==-1){
-                    break;
-                }
-                if(lowgradientindices[i]==1){
+                if(i==-1 or lowgradientindices[i]==1){
                     continue;
                 }
+                
                 
                 if(input_data[i]<input_data[index] and input_data[i]>threshold and i!=next_vertex){
                     smallest_vertex = i;
@@ -1382,16 +1920,7 @@ __global__ void fix_maxi_critical2(int direction){
             // double d = (decp_data[index] - input_data[index] + (input_data[index]-decp_data_copy[index]))/2.0;
             // double d1 = ((input_data[next_vertex] + (input_data[next_vertex]-decp_data_copy[next_vertex])) - decp_data[next_vertex])/2.0;
             // double diff1 = ((input_data[next_vertex]-decp_data_copy[next_vertex]) - (input_data[next_vertex]-decp_data[index]))/2.0;
-            if(false){
-                 printf("改变后");
-                 printf("%d, %f\n", index, decp_data[index]);
-                 printf("%d %f\n", next_vertex, decp_data[next_vertex]);
-                 printf("%f %f \n",diff, d);
-            //     // cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
-            //     // cout<<"next_vertex: "<<next_vertex<<","<<decp_data[next_vertex]<<endl;
-            //     // cout<<"smallest_vertex: "<<smallest_vertex<<", "<<decp_data[smallest_vertex]<<endl;
-            //     // cout<<"diff: "<<d<<","<<"d: "<<d<<endl;
-             }
+            
             if(decp_data[index]<decp_data[next_vertex] or (decp_data[index]==decp_data[next_vertex] and index<next_vertex)){
                 
                 de_direction_as[index]=or_maxi[index];
@@ -1399,7 +1928,7 @@ __global__ void fix_maxi_critical2(int direction){
                 return;
             }
             
-            if(d>=1e-16 or d1>=1e-16){
+            if(d>=1e-16 ){
                 
                 if(decp_data[index]==decp_data[next_vertex])
                     {
@@ -1407,8 +1936,8 @@ __global__ void fix_maxi_critical2(int direction){
                         while(abs(input_data[index]-decp_data[index]+d)>bound and d>=2e-16){
                             d/=2;
                         }
-                        if (abs(input_data[index]-decp_data[index]+d/64)<=bound){
-                            decp_data[index] -= d/64;
+                        if (abs(input_data[index]-decp_data[index]+d)<=bound){
+                            decp_data[index] -= d;
                         }
                     }
                 else{
@@ -1488,23 +2017,35 @@ __global__ void fix_maxi_critical2(int direction){
             else{
                 
                 if(decp_data[index]>decp_data[next_vertex]){
-                    
-                    if(abs(input_data[index]-decp_data[next_vertex])<bound){
+                    double t = (decp_data[next_vertex]-(input_data[index]-bound))/2.0;
+                    if(abs(input_data[index]-decp_data[next_vertex]+t)<=bound and t>=1e-16){
                             
-                            double t = (decp_data[next_vertex]-(input_data[index]-bound))/2.0;
-                            decp_data[index] = decp_data[next_vertex] + t;
+                            
+                            decp_data[index] = decp_data[next_vertex] - t;
                             // decp_data[next_vertex] = t;
                         }
                     else{
+                        
                         decp_data[index] = input_data[index] - bound;
                         
                     }
-                    
+                    // if(count_f_max==1){
+                    //         printf("改变后dd");
+                    //         printf("%d, %.17lf, %.17lf\n", index, decp_data[index],input_data[index]-bound);
+                    //         printf("%d %.17lf\n", next_vertex, decp_data[next_vertex]);
+                    //         printf("%.17lf %.17lf \n",d1, d);
+                    //         printf("%.17lf %.17lf \n",input_data[index], input_data[next_vertex]);
+                    //         // cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
+                    //         // cout<<"next_vertex: "<<next_vertex<<","<<decp_data[next_vertex]<<endl;
+                    //         // cout<<"smallest_vertex: "<<smallest_vertex<<", "<<decp_data[smallest_vertex]<<endl;
+                    //         // cout<<"diff: "<<d<<","<<"d: "<<d<<endl;
+                    //     }
                 }
                 else if(decp_data[index]==decp_data[next_vertex]){
                     // double bound1 = abs(input_data[index]-decp_data[index]);
                     //
-                    double d = (bound - (input_data[index]-decp_data[index]))/64;
+                    double d = (bound - (input_data[index]-decp_data[index]))/2.0;
+                    double d1 = (bound - (input_data[next_vertex]-decp_data[next_vertex]))/2.0;
                     // while(abs(input_data[index]-decp_data[index]-d)>bound and d>=2e-16){
                     //         d/=2;
                     // }
@@ -1516,9 +2057,10 @@ __global__ void fix_maxi_critical2(int direction){
                         
                         decp_data[index]-=d;
                     }
-                    else if(abs(input_data[next_vertex]-decp_data[next_vertex]-d)<=bound){
+                    
+                    else if(abs(input_data[next_vertex]-decp_data[next_vertex]-d1)<=bound){
                         // if(next_vertex==78){cout<<"在这里21"<<endl;}
-                        decp_data[next_vertex]+=d;
+                        decp_data[next_vertex]+=d1;
                     }
                 }
                 
@@ -1532,6 +2074,7 @@ __global__ void fix_maxi_critical2(int direction){
             //     cout<<"在这里"<<endl;
             // }
             // find_direction2(0,index);
+
             int largest_index = from_direction_to_index1(index,de_direction_as[index]);
             // 对的
             double diff = (bound-(input_data[index]-decp_data[index]))/2.0;
@@ -1540,13 +2083,18 @@ __global__ void fix_maxi_critical2(int direction){
             // double d = (input_data[largest_index]-decp_data[index])/2.0;
             // double d1 = ((input_data[next_vertex] + (input_data[next_vertex]-decp_data_copy[next_vertex])) - decp_data[next_vertex])/2.0;
             // double diff1 = ((input_data[next_vertex]-decp_data_copy[next_vertex]) - (input_data[next_vertex]-decp_data[index]))/2.0;
-            // if(index==25026 and count_f_max<=770){
-            //     cout<<"改变前"<<endl;
-            //     cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
-            //     cout<<"next_vertex: "<<largest_index<<","<<decp_data[largest_index]<<endl;
+            
+            
+            // if(count_f_max==1 and count_f_min==0){
+            //     printf("fp改变后");
+            //     printf("%d, %f\n", index, decp_data[index]);
+            //     printf("%d %f\n", largest_index, decp_data[largest_index]);
+            //     printf("%f %f \n",diff, d);
+            //     printf("%.17lf %.17lf \n",input_data[index], input_data[largetst_index]);
+            //     // cout<<"index: "<<index<<", "<<decp_data[index]<<endl;
+            //     // cout<<"next_vertex: "<<next_vertex<<","<<decp_data[next_vertex]<<endl;
             //     // cout<<"smallest_vertex: "<<smallest_vertex<<", "<<decp_data[smallest_vertex]<<endl;
-            //     cout<<"diff: "<<d<<","<<"d: "<<d<<endl;
-            //     cout<<or_maxi[25026]<<de_direction_as[25026]<<endl;
+            //     // cout<<"diff: "<<d<<","<<"d: "<<d<<endl;
             // }
             // if(index==6345199){
             //     printf("改变后");
@@ -1595,12 +2143,11 @@ __global__ void fix_maxi_critical2(int direction){
             
         }
         
-        
     
     }
     
-    else if (direction != 0 && index_f<count_f_min && lowgradientindices[all_min[index_f]]==0){
-        int index = all_min[index_f];
+    else if (direction != 0 && lowgradientindices[id]==0){
+        int index = all_min[id];
         if (or_mini[index]!=-1){
             // find_direction2(1,index);
             int next_vertex= from_direction_to_index1(index,or_mini[index]);
@@ -1625,7 +2172,7 @@ __global__ void fix_maxi_critical2(int direction){
             //     cout<<"d1: "<<d1<<endl;
             // }
             
-            if(diff>=1e-16 or d>=1e-16 or d1>=1e-16){
+            if(diff>=1e-16){
                 
                 if(decp_data[index]==decp_data[next_vertex]){
                     
@@ -1687,7 +2234,7 @@ __global__ void fix_maxi_critical2(int direction){
                             //     decp_data[index]+=d;
                             // }
                             else if(abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<=bound and decp_data[index]<=decp_data[next_vertex] and d1>=1e-16){
-                                while(abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<bound and d1<=1e-17){
+                                while(abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<bound and d1<=1e-16){
                                     d1*=2;
                                 }
                                 // if(count_f_min<=12){cout<<"在这里2！"<<abs(input_data[next_vertex]-decp_data[next_vertex]+d1)<<"," <<d1<< endl;}
@@ -1738,8 +2285,9 @@ __global__ void fix_maxi_critical2(int direction){
                         //     decp_data[next_vertex] = t;
                             
                         // }
-                        if(abs(input_data[next_vertex]-decp_data[index])<bound){
-                            double t = (decp_data[index]-(input_data[index]-bound))/2.0;
+                        double t = (decp_data[index]-(input_data[index]-bound))/2.0;
+                        if(abs(input_data[next_vertex]-decp_data[index]+t)<bound and t>=1e-16){
+                            
                             // if(index==949999){cout<<"在这里24"<<endl;}
                             // decp_data[index] = decp_data[next_vertex];
                             // if(next_vertex==66783){cout<<"在这里14"<<endl;}
@@ -1753,7 +2301,7 @@ __global__ void fix_maxi_critical2(int direction){
                 }
                 
                 else if(decp_data[index]==decp_data[next_vertex]){
-                    double d = (bound - (input_data[index]-decp_data[index]))/64.0;
+                    double d = (bound - (input_data[index]-decp_data[index]))/2.0;
                     // while(abs(input_data[index]-decp_data[index]-d)>bound and d>=2e-16){
                     //         d/=2;
                     // }
@@ -1842,12 +2390,34 @@ __global__ void fix_maxi_critical2(int direction){
         }
 
         
+
+        
     }    
     return;
 }
+__global__ void initializeKernel(double value) {
+    
+    if (threadIdx.x == 0) {
+        d_stacks.clear();
+        id_stacks.clear();
+    }
+
+
+}
+
+__global__ void initializeKernel1(double value) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(tid<num){
+        d_deltaBuffer[tid] = -2000.0;
+    }
+
+}
+
+
 
 __global__ void fixpath11(int direction){
     int index_f = blockIdx.x * blockDim.x + threadIdx.x;
+    double delta;
     if(direction == 0){
         if(index_f<count_p_max && lowgradientindices[all_p_max[index_f]]==0){
 
@@ -1943,35 +2513,50 @@ __global__ void fixpath11(int direction){
                     }
                     
                     
-                    if(decp_data[false_index]>threshold and threshold<decp_data[true_index]){
+                    // if(decp_data[false_index]>threshold and threshold<decp_data[true_index]){
                             
-                            while(decp_data[false_index] - d < threshold and d>=2e-16)
-                            {
-                                d/=2;
-                            }
+                    //         while(decp_data[false_index] - d < threshold and d>=2e-16)
+                    //         {
+                    //             d/=2;
+                    //         }
                             
                             
-                    }
-                    else if(threshold>=decp_data[true_index]){
+                    // }
+                    // else if(threshold>=decp_data[true_index]){
                         
                         
-                        double diff2 = (bound-(input_data[smallest_vertex1]-decp_data[smallest_vertex1]))/2;
+                    //     double diff2 = (bound-(input_data[smallest_vertex1]-decp_data[smallest_vertex1]))/2;
                         
-                        if(diff2>1e-16){
-                            while(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]+diff2)>bound and diff2>=2e-16 and decp_data[smallest_vertex]-diff2>decp_data[true_index]){
+                    //     if(diff2>1e-16){
+                    //         while(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]+diff2)>bound and diff2>=2e-16 and decp_data[smallest_vertex]-diff2>decp_data[true_index]){
                                 
-                                diff2/=2;
-                            }
+                    //             diff2/=2;
+                    //         }
                             
-                            if(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]+diff2)<=bound){
-                                decp_data[smallest_vertex]-=diff2;
-                                // if(index==97) cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<endl;
-                            }
+                    //         if(abs(input_data[smallest_vertex]-decp_data[smallest_vertex]+diff2)<=bound){
+                    //             // decp_data[smallest_vertex]-=diff2;
+                    //             delta = -diff2;
+                            
+                    //             int oldValue = id_array[smallest_vertex];
+                    //             // double expected = oldValue;
+                                    
+                                    
+                    //             // if(delta>10000){
+                    //             //         printf("chuchuo");
+                    //             //     }
+                    //             // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                    //             if (cur > oldValue) {
+                    //                     atomicCAS(&id_array[smallest_vertex], id_array[smallest_vertex], cur);
+                    //                     d_deltaBuffer[smallest_vertex] = delta;
+                    //                     // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                    //                 }
+                    //             // if(index==97) cout<<"处理97的时候: "<<decp_data[next_vertex]<<", "<<decp_data[index]<<endl;
+                    //         }
                             
                             
-                        }
+                    //     }
                         
-                    }
+                    // }
                     while(abs(input_data[true_index]-(decp_data[false_index] + diff))>bound and diff>2e-16){
                                 diff/=2;
                     }
@@ -2005,11 +2590,60 @@ __global__ void fixpath11(int direction){
                         
                     // }
                     if (abs(input_data[true_index]-(decp_data[false_index] + diff))<=bound and decp_data[false_index]>=decp_data[true_index]){
-                        decp_data[true_index] = decp_data[false_index] + diff;
+                        // decp_data[true_index] = decp_data[false_index] + diff;
+                        delta = decp_data[false_index] + diff - decp_data[true_index];
+                            
+                        // int oldValue = id_array[true_index];
+                        // // double expected = oldValue;
+                            
+                            
+                        // // if(delta>10000){
+                        // //         printf("chuchuo");
+                        // //     }
+                        // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                        // if (cur > oldValue) {
+                        //         atomicCAS(&id_array[true_index], id_array[true_index], cur);
+                        //         d_deltaBuffer[true_index] = delta;
+                        //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                        //     }
+                        // d_stacks[true_index].push(delta);
+                        
+                        double oldValue = d_deltaBuffer[true_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(true_index);
+                        if (delta > oldValue) {
+                                swap(true_index, delta);
+                                
+                            }
                     }
                     if (abs(input_data[false_index]-decp_data[false_index] + d)<=bound){
                         
-                        decp_data[false_index] -=d;
+                        // decp_data[false_index] -=d;
+                        delta = -d;
+                        // int oldValue = id_array[false_index];
+                        // // double expected = oldValue;
+                            
+                            
+                        // // if(delta>10000){
+                        // //         printf("chuchuo");
+                        // //     }
+                        // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                        // if (cur > oldValue) {
+                        //         atomicCAS(&id_array[false_index], id_array[false_index], cur);
+                        //         d_deltaBuffer[false_index] = delta;
+                        //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                        //     }
+                        
+                        
+                        double oldValue = d_deltaBuffer[false_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(false_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(false_index, delta);
+                                
+                            }
                     }
                     
                     
@@ -2031,11 +2665,61 @@ __global__ void fixpath11(int direction){
                 // }
                 if (decp_data[false_index]>=decp_data[true_index]){
                     if(abs(input_data[false_index]-((decp_data[false_index]+input_data[true_index]-bound)/2.0))<=bound){
-                        decp_data[false_index] = (decp_data[false_index]+input_data[true_index]-bound)/2.0;
+                        // decp_data[false_index] = (decp_data[false_index]+input_data[true_index]-bound)/2.0;
+                        delta = (decp_data[false_index]+input_data[true_index]-bound)/2.0-decp_data[false_index];
+                        // int oldValue = id_array[false_index];
+                        // // double expected = oldValue;
+                            
+                            
+                        // // if(delta>10000){
+                        // //         printf("chuchuo");
+                        // //     }
+                        // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                        // if (cur > oldValue) {
+                        //         atomicCAS(&id_array[false_index], id_array[false_index], cur);
+                        //         d_deltaBuffer[false_index] = delta;
+                        //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                        //     }
+                        // d_stacks[false_index].push(delta);
+                        
+                        double oldValue = d_deltaBuffer[false_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(false_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(false_index, delta);
+                                
+                            }
                     }
                         
                     else{
-                        decp_data[false_index] = input_data[false_index] - bound;
+                        // decp_data[false_index] = input_data[false_index] - bound;
+                        delta =  input_data[false_index] - bound-decp_data[false_index];
+                        // int oldValue = id_array[false_index];
+                        // // double expected = oldValue;
+                            
+                            
+                        // // if(delta>10000){
+                        // //         printf("chuchuo");
+                        // //     }
+                        // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                        // if (cur > oldValue) {
+                        //         atomicCAS(&id_array[false_index], id_array[false_index], cur);
+                        //         d_deltaBuffer[false_index] = delta;
+                        //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                        //     }
+                        // d_stacks[false_index].push(delta);
+                        
+                        double oldValue = d_deltaBuffer[false_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(false_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(false_index, delta);
+                                
+                            }
                     }
                     
                 }
@@ -2051,6 +2735,7 @@ __global__ void fixpath11(int direction){
     else 
     {
         if(index_f<count_p_min && lowgradientindices[all_p_min[index_f]]==0){
+            
         int index = all_p_min[index_f];
         int cur = index;
         
@@ -2079,7 +2764,7 @@ __global__ void fixpath11(int direction){
         int start_vertex = cur;
         // if(wrong_index_ds.size()==4){
         //     cout<<"修复的时候变成了:" <<endl;
-        //     cout<<start_vertex<<", "<<de_direction_ds[start_vertex]<<", "<<or_direction_ds[start_vertex]<<endl;
+        //     cout<<start_vertex<<", "<<de_direction_ds[start_vertex]<<", "<<or_mini[start_vertex]<<endl;
         // }
         if (start_vertex==-1) return;
         
@@ -2124,10 +2809,60 @@ __global__ void fixpath11(int direction){
                         }
                         if(abs(input_data[true_index]-(decp_data[false_index] - diff))<=bound and decp_data[false_index]<=decp_data[true_index]){
                             // decp_data[false_index] = decp_data[true_index] + diff;
-                            decp_data[true_index] = decp_data[false_index] - diff;
+                            // decp_data[true_index] = decp_data[false_index] - diff;
+                            delta =  decp_data[false_index] - diff- decp_data[true_index];
+                            // int oldValue = id_array[true_index];
+                            // // double expected = oldValue;
+                                
+                                
+                            // // if(delta>10000){
+                            // //         printf("chuchuo");
+                            // //     }
+                            // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                            // if (cur > oldValue) {
+                            //         atomicCAS(&id_array[true_index], id_array[true_index], cur);
+                            //         d_deltaBuffer[true_index] = delta;
+                            //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                            //     }
+                            // d_stacks[true_index].push(delta);
+                            
+                            double oldValue = d_deltaBuffer[true_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(true_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(true_index, delta);
+                                
+                            }
                         }
                         if(abs(input_data[false_index]-decp_data[false_index] - d)<=bound){
-                            decp_data[false_index] += d;
+                            
+                            delta =  d;
+                            // int oldValue = id_array[false_index];
+                            // // double expected = oldValue;
+                                
+                                
+                            // // if(delta>10000){
+                            // //         printf("chuchuo");
+                            // //     }
+                            // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                            // if (cur > oldValue) {
+                            //         atomicCAS(&id_array[false_index], id_array[false_index], cur);
+                            //         d_deltaBuffer[false_index] = delta;
+                            //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                            //     }
+                            // d_stacks[false_index].push(delta);
+                            
+                            double oldValue = d_deltaBuffer[false_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(false_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(false_index, delta);
+                                
+                            }
                         }
                         
                         
@@ -2141,7 +2876,32 @@ __global__ void fixpath11(int direction){
                         if (decp_data[false_index]==decp_data[true_index]){
                             if(abs(input_data[false_index]-decp_data[false_index] - d)<=bound){
                         
-                                decp_data[false_index] += d;
+                                // decp_data[false_index] += d;
+                                delta =  d;
+                                // int oldValue = id_array[false_index];
+                                // // double expected = oldValue;
+                                    
+                                    
+                                // // if(delta>10000){
+                                // //         printf("chuchuo");
+                                // //     }
+                                // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                                // if (cur > oldValue) {
+                                //         atomicCAS(&id_array[false_index], id_array[false_index], cur);
+                                //         d_deltaBuffer[false_index] = delta;
+                                //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                                //     }
+                                // d_stacks[false_index].push(delta);
+                                
+                                double oldValue = d_deltaBuffer[false_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(false_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(false_index, delta);
+                                
+                            }
                         }
                        
                     }
@@ -2160,17 +2920,92 @@ __global__ void fixpath11(int direction){
                 
                 if(decp_data[false_index]<=decp_data[true_index]){
                     if(abs(input_data[false_index]-((decp_data[true_index]+input_data[true_index]+bound)/2.0))<=bound){
-                        decp_data[false_index] =  (decp_data[true_index]+input_data[true_index]+bound)/2.0;
+                        // decp_data[false_index] =  (decp_data[true_index]+input_data[true_index]+bound)/2.0;
+                        delta =  (decp_data[true_index]+input_data[true_index]+bound)/2.0 - decp_data[false_index];
+                            // int oldValue = id_array[false_index];
+                            // // double expected = oldValue;
+                                
+                                
+                            // // if(delta>10000){
+                            // //         printf("chuchuo");
+                            // //     }
+                            // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                            // if (cur > oldValue) {
+                            //         atomicCAS(&id_array[false_index], id_array[false_index], cur);
+                            //         d_deltaBuffer[false_index] = delta;
+                            //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                            //     }
+                            // d_stacks[false_index].push(delta);
+                            
+                            double oldValue = d_deltaBuffer[false_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(false_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(false_index, delta);
+                                
+                            }
                     }
                     else{
-                        decp_data[false_index] = input_data[false_index] + bound;
+                        // decp_data[false_index] = input_data[false_index] + bound;
+                        delta =  input_data[false_index] + bound - decp_data[false_index];
+                            // int oldValue = id_array[false_index];
+                            // // double expected = oldValue;
+                                
+                                
+                            // // if(delta>10000){
+                            // //         printf("chuchuo");
+                            // //     }
+                            // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                            // if (cur > oldValue) {
+                            //         atomicCAS(&id_array[false_index], id_array[false_index],cur);
+                            //         d_deltaBuffer[false_index] = delta;
+                            //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                            //     }
+                            // d_stacks[false_index].push(delta);
+                            
+                            double oldValue = d_deltaBuffer[false_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(false_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(false_index, delta);
+                                
+                            }
                     }
                     while(abs(input_data[false_index]-(decp_data[false_index] + diff))>bound and diff>=2e-17){
                         diff/=2;
                     }
                     if (decp_data[false_index]==decp_data[true_index]){
-                        double diff = (bound-(input_data[false_index]-decp_data[false_index]))/2.0;
-                        decp_data[false_index]+=diff;
+                            double diff = (bound-(input_data[false_index]-decp_data[false_index]))/2.0;
+                            // decp_data[false_index]+=diff;
+                            delta =  diff;
+                            // int oldValue = id_array[false_index];
+                            // // double expected = oldValue;
+                                
+                                
+                            // // if(delta>10000){
+                            // //         printf("chuchuo");
+                            // //     }
+                            // // oldValue = atomicMaxDouble(&d_deltaBuffer[index], delta);
+                            // if (cur > oldValue) {
+                            //         atomicCAS(&id_array[false_index], id_array[false_index], cur);
+                            //         d_deltaBuffer[false_index] = delta;
+                            //         // if(delta>1000) printf("delta出错： %.17lf %d\n", delta, index);
+                            //     }
+                            // d_stacks[false_index].push(delta);
+                            
+                            double oldValue = d_deltaBuffer[false_index];
+                        // d_stacks.push(delta);
+                        // id_stacks.push(false_index);
+                        if (delta > oldValue) {
+                                // atomicCAS(&id_array[index], id_array[index], index);
+                                // d_deltaBuffer[index] = -d;
+                                swap(false_index, delta);
+                                
+                            }
                     }
                 
                 }
@@ -2184,6 +3019,116 @@ __global__ void fixpath11(int direction){
     }
     return;
 };
+
+__global__ void initialize2DArray(double** d_array, int* sizes, int rows) {
+    int row = blockIdx.x;
+    int col = threadIdx.x;
+
+    if (row < rows && col < sizes[row]) {
+        d_array[row][col] = row * 10 + col; // Example initialization
+    }
+}
+
+
+
+
+void resizeArray(double** d_array, int* sizes, int row, int new_size) {
+    double* d_subarray;
+    cudaMalloc(&d_subarray, new_size * sizeof(double));
+    cudaMemcpy(d_subarray, d_array[row], sizes[row] * sizeof(double), cudaMemcpyDeviceToDevice);
+    cudaFree(d_array[row]);
+    d_array[row] = d_subarray;
+    sizes[row] = new_size;
+}
+
+
+__global__ void applyDeltaBuffer() {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    if (tid < edit_count) {
+        
+        // double maxDelta = -DBL_MAX;
+        // int maxId = -1;
+        // for(int i = 0;i<12;i++){
+            
+        //     double t = d_deltaBuffer1[tid*12+i];
+        //     // if(t == 0.0) continue;
+            
+        //     if(t>maxDelta && t!=0){ 
+        //         maxDelta = t;
+        //         maxId = i;
+        //     }
+        // }
+        
+        // if(d_deltaBuffer[tid]!=-2000){
+        //     decp_data[tid] += d_deltaBuffer[tid];
+        // }
+        
+        
+        // if(maxId!=-1){
+        //     if(count_p_max == 1224) printf("%.17lf\n", maxDelta);
+        //     decp_data[tid] += maxDelta;
+        // }
+        int id;
+        double edit;
+        if(!d_stacks.isEmpty()){
+            d_stacks.pop(edit);
+            id_stacks.pop(id);
+            decp_data[id] += edit;
+        }
+        
+
+        
+        
+    }
+    
+}
+
+
+__global__ void applyDeltaBuffer1() {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    if (tid < num and lowgradientindices[tid]!=1) {
+       
+        // double maxDelta = -DBL_MAX;
+        // int maxId = -1;
+        // for(int i = 0;i<12;i++){
+            
+        //     double t = d_deltaBuffer1[tid*12+i];
+        //     // if(t == 0.0) continue;
+            
+        //     if(t>maxDelta && t!=0){ 
+        //         maxDelta = t;
+        //         maxId = i;
+        //     }
+        // }
+        
+        if(d_deltaBuffer[tid]!=-2000){
+            // printf("%.17lf %d\n",d_deltaBuffer[tid] ,tid);
+            decp_data[tid] += d_deltaBuffer[tid];
+        }
+        
+        
+        // if(maxId!=-1){
+        //     if(count_p_max == 1224) printf("%.17lf\n", maxDelta);
+        //     decp_data[tid] += maxDelta;
+        // }
+        // int id;
+        // double edit;
+        // if(!d_stacks.isEmpty()){
+        //     d_stacks.pop(edit);
+        //     id_stacks.pop(id);
+        //     decp_data[id] += edit;
+        // }
+        
+
+        
+        
+    }
+    
+}
+
+
 __global__ void getlabel(int *un_sign_ds, int *un_sign_as, int type=0){
     
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2288,6 +3233,7 @@ __global__ void getlabel(int *un_sign_ds, int *un_sign_as, int type=0){
     return;
 
 }
+
 
 __global__ void initializeWithIndex(int size, int type=0) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2514,7 +3460,7 @@ __global__ void initializeWithIndex(int size, int type=0) {
     
 // }
 
-void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection){
+void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,std::vector<int>* dec_label1,std::vector<int>* or_label1, int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection){
     int* temp;
     
     int* temp1;
@@ -2523,21 +3469,33 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     int* dec_l;
     
     
-    
+
+    float mappath_path = 0.0;
+    float getfpath = 0.0;
+    float fixtime_path = 0.0;
+    float finddirection1 = 0.0;
+    float getfcp = 0.0;
+    float fixtime_cp = 0.0;
     double* temp3;
     double* temp4;
     
+    LockFreeStack<double> stack_temp;
+    LockFreeStack<int> id_stack_temp;
+
+    std::vector<std::vector<float>> time_counter;
+    int total_cnt;
+    int sub_cnt;
     int num1 = width1*height1*depth1;
     int h_un_sign_as = num1;
     int h_un_sign_ds = num1;
-    // float datatransfer = 0.0;
+    
     float elapsedTime;
     int initialValue = 0;
     cout<<bound1<<endl;
     
-    // float find_direciton = 0.0;
-    float getfcp = 0.0;
+    
     cout<<num1<<endl;
+    
     int *un_sign_as;
     cudaMalloc((void**)&un_sign_as, sizeof(int));
     cudaMemset(un_sign_as, 0, sizeof(int));
@@ -2546,9 +3504,11 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     cudaMalloc((void**)&un_sign_ds, sizeof(int));
     cudaMemset(un_sign_ds, 0, sizeof(int));
 
-    // cout<<num1<<endl;
-    // size_t size = num1 * sizeof(int);
+    cout<<width1<<endl;
     
+    std::vector<int> h_all_p_max(num1);
+    std::vector<int> h_all_p_min(num1);
+
 
     cudaError_t cudaStatus= cudaMemcpyToSymbol(width, &width1, sizeof(int), 0, cudaMemcpyHostToDevice);
     if (cudaStatus != cudaSuccess) {
@@ -2564,11 +3524,24 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     
     cudaMalloc(&temp, num1 * sizeof(int));
     cudaMalloc(&temp1, num1 * sizeof(int));
-    cudaStatus =cudaMalloc(&temp3, num1  * sizeof(double));
+    cudaStatus = cudaMalloc(&temp3, num1  * sizeof(double));
+    cudaMalloc(&temp4, num1  * sizeof(double));
+
+    
+    
+
+
+
+   if (cudaStatus != cudaSuccess) {
+            std::cerr << "cudaMemcpyToSymbol failed89: " << cudaGetErrorString(cudaStatus) << std::endl;
+        }
+
+    
+
     if (cudaStatus != cudaSuccess) {
             std::cerr << "cudaMemcpyToSymbol failed89: " << cudaGetErrorString(cudaStatus) << std::endl;
         }
-    cudaMalloc(&temp4, num1  * sizeof(double));
+    
     cudaMalloc(&d_data, num1 * sizeof(int));
     cudaMalloc(&or_l, num1 * 2  * sizeof(int));
     cudaMalloc(&dec_l, num1 * 2 * sizeof(int));
@@ -2611,6 +3584,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     // 将设备端内存地址复制到设备端全局指针
     
     cudaEventRecord(start, 0);
+
     cudaMemcpyToSymbol(all_max, &d_temp, sizeof(int*));
     
     cudaMemcpyToSymbol(lowgradientindices, &d_data, sizeof(int*));
@@ -2673,9 +3647,10 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         }
     cudaMemcpyToSymbol(input_data, &temp3, sizeof(double*));
     cudaMemcpyToSymbol(decp_data, &temp4, sizeof(double*));
+
     
     
-    dim3 blockSize(1024);
+    dim3 blockSize(256);
     
     dim3 gridSize((num1 + blockSize.x - 1) / blockSize.x);
     
@@ -2684,9 +3659,13 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     cudaStatus = cudaMalloc(&tempDevicePtr, arraySize * sizeof(int));
     
     cudaStatus = cudaMemcpyToSymbol(adjacency, &tempDevicePtr, sizeof(tempDevicePtr));
-    if (cudaStatus != cudaSuccess) {
-            std::cerr << "cudaMemcpyToSymbol failed81: " << cudaGetErrorString(cudaStatus) << std::endl;
-        }
+   
+
+    
+    
+
+    
+
     cudaDeviceSynchronize();
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
@@ -2714,9 +3693,46 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     // }
     
     
-    // cout<<"1000次finddirection: "<<elapsedTime<<endl;
+    cout<<"1000次finddirection: "<<elapsedTime<<endl;
+   
+    double init_value = -2*bound1;
+    double* buffer_temp;
+    cudaMalloc(&buffer_temp, num1  * sizeof(double));
+    cudaMemcpyToSymbol(d_deltaBuffer, &buffer_temp, sizeof(double*));
+
+    double* array_temp;
+    cudaMalloc(&array_temp, num1  * sizeof(int));
+    cudaMemcpyToSymbol(id_array, &array_temp, sizeof(int*));
+
+    // initializeKernel1<<<gridSize, blockSize>>>(init_value);
+
+    
+    cudaEventRecord(start, 0);
+    for(int i =0;i<1;i++){
     find_direction<<<gridSize, blockSize>>>();
-    iscriticle<<<gridSize,blockSize>>>();
+    }
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&elapsedTime, start, stop);
+    cout<<"100次find_direction: "<<elapsedTime<<endl;
+    
+    cudaEventRecord(start, 0);
+    for(int i =0;i<1;i++){
+        int initialValue = 0;
+        cudaStatus = cudaMemcpyToSymbol(count_f_max, &initialValue, sizeof(int));
+        // if (cudaStatus != cudaSuccess) {
+        //     std::cerr << "cudaMemcpyToSymbol failed4: " << cudaGetErrorString(cudaStatus) << std::endl;
+        // }
+        // int initialValue = 0;
+        cudaStatus = cudaMemcpyToSymbol(count_f_min, &initialValue, sizeof(int));
+        iscriticle<<<gridSize,blockSize>>>();
+    }
+    
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&elapsedTime, start, stop);
+    cout<<"100次getfcp: "<<elapsedTime<<endl;
+    // double h_s[num1];
     int host_count_f_max;
     cudaStatus = cudaMemcpyFromSymbol(&host_count_f_max, count_f_max, sizeof(int), 0, cudaMemcpyDeviceToHost);
     if (cudaStatus != cudaSuccess) {
@@ -2727,27 +3743,164 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     if (cudaStatus != cudaSuccess) {
             std::cerr << "cudaMemcpyToSymbol failed12: " << cudaGetErrorString(cudaStatus) << std::endl;
     }
+    // cudaMemcpyFromSymbol(&h_s, decp_data, num1*sizeof(double), 0, cudaMemcpyDeviceToHost);
     
-    while(host_count_f_max>0 or host_count_f_min>0){
+    // std::cout<<"before: "<<h_s[96955]<<std::endl;
+    int cnt  = 0;
+    // int h_all_max[num1];
+    std::vector<int> h_all_max(num1);
+    int h_count_f_max = 0;
+    
+    
+    
+    while(false){
         
-            // cout<<host_count_f_max<<", "<<host_count_f_min<<endl;
-
+            
+            // std::cout<<host_count_f_min<<","<<host_count_f_max<<std::endl;
+            
+            initializeKernel1<<<gridSize, blockSize>>>(init_value);
             // cpite+=1;
-            dim3 blockSize1(1024);
+            
+            cudaDeviceSynchronize();
+            
+            // cudaDeviceSynchronize();
+            
+            dim3 blockSize1(256);
+            
             dim3 gridSize1((host_count_f_max + blockSize1.x - 1) / blockSize1.x);
             // cudaEventRecord(start, 0);
             cudaEventRecord(start, 0);
-            fix_maxi_critical1<<<gridSize1, blockSize1>>>(0);
             
-            // cudaDeviceSynchronize();
 
-            dim3 blocknum(1024);
+            
+
+            
+
+            
+            int threads_per_block = 256;
+            int num_blocks = (num1+threads_per_block-1)/threads_per_block;
+            
+            
+            
+            // cudaMemcpy(h_all_max.data(), d_temp, num1 * sizeof(int),  cudaMemcpyDeviceToHost);
+            // std::sort(h_all_max.begin(), h_all_max.end(), std::greater<int>());
+            
+            
+            // cudaStatus = cudaMemcpy(d_temp, h_all_max.data(), num1 * sizeof(int), cudaMemcpyHostToDevice);
+            
+            
+            // cudaStatus = cudaMemcpyToSymbol(all_max, &d_temp, sizeof(int*));
+            cudaEventRecord(start, 0);
+            // cudaMemcpy(h_all_max.data(), d_temp, num1 * sizeof(int),  cudaMemcpyDeviceToHost);
+            fix_maxi_critical1<<<gridSize1, blockSize1>>>(0,cnt);
+            
+            
+        //     for(auto i = 0; i < host_count_f_max; i ++){
+            
+            dim3 blocknum(256);
             dim3 gridnum((host_count_f_min + blocknum.x - 1) / blocknum.x);
+            fix_maxi_critical1<<<gridnum, blocknum>>>(1,cnt);
+            applyDeltaBuffer1<<<gridSize, blockSize>>>();
+            cudaEventRecord(stop, 0);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&elapsedTime, start, stop);
+            cout<<"1次fixfcp: "<<elapsedTime<<endl;
+            
+        //         fix_maxi_critical2<<<1,1>>>(0,i);
+
+        // }
+            // cudaMemcpy(h_deltaBuffer, d_deltaBuffer, num1 * sizeof(double), cudaMemcpyDeviceToHost);
+            // for(int i=0;i<num1;i++){
+            //     if(h_deltaBuffer[i]>10000){
+            //         std::cout<<i<<std::endl;
+            //     }
+            
+
+              
+            // initializeKernel1<<<gridSize, blockSize>>>(init_value);
+
+        //     int* d_size;
+        //     int h_size;
+        //     cudaStatus = cudaMalloc(&d_size, sizeof(int));
+            
+
+        //     // 复制栈的内容到主机
+        //     int* d_index_array;
+        //     double* d_edit_array;
+        //     std::cout<<"coppy_toarray"<<std::endl;
+        //     copy_stack_to_array<<<1, 1>>>(nullptr, nullptr, d_size);
+        //     cudaDeviceSynchronize();
+        //     std::cout<<"coppy_toarray_end"<<std::endl;
+
+            
+        //     cudaMemcpy(&h_size, d_size, sizeof(int), cudaMemcpyDeviceToHost);
+        //     if (cudaStatus != cudaSuccess) {
+        //     std::cerr << "cudaMemcpyToSymbol failed11: " << cudaGetErrorString(cudaStatus) << std::endl;
+        // }
+        //     std::cout<<"size: "<<h_size<<std::endl;
+        //     // 分配主机和设备数组
+        //     cudaMalloc(&d_index_array, h_size * sizeof(int));
+        //     cudaMalloc(&d_edit_array, h_size * sizeof(int));
+        //     int* h_index_array = (int*)malloc(h_size * sizeof(int));
+        //     int* h_edit_array = (int*)malloc(h_size * sizeof(double));
+
+        //     // 复制设备栈内容到设备数组
+        //     // copy_stack_to_array<<<1, 1>>>(d_index_array, d_edit_array, d_size);
+        //     cudaMemcpy(h_index_array, d_index_array, h_size * sizeof(int), cudaMemcpyDeviceToHost);
+        //     cudaMemcpy(h_edit_array, d_edit_array, h_size * sizeof(double), cudaMemcpyDeviceToHost);
+
+        //     // 在主机上创建map并处理数据
+        //     std::unordered_map<int, double> index_edit_map;
+        //     for (int i = 0; i < h_size; ++i) {
+        //         int index = h_index_array[i];
+        //         int edit = h_edit_array[i];
+        //         if (index_edit_map.find(index) == index_edit_map.end() || index_edit_map[index] < edit) {
+        //             index_edit_map[index] = edit;
+        //         }
+        //     }
+
+        //     // 打印map内容
+        //     int edit_count_temp = index_edit_map.size();
+            
+        //     cudaMemcpyToSymbol(edit_count, &edit_count_temp, sizeof(int), 0, cudaMemcpyHostToDevice);
+        //     for (const auto& pair : index_edit_map) {
+        //         printf("Index: %d, Edit: %.17lf\n", pair.first, pair.second);
+        //     }
+        //     exit(0);
+        //     // 将处理后的数据传回设备
+        //     int new_size = index_edit_map.size();
+        //     int* h_new_index_array = (int*)malloc(new_size * sizeof(int));
+        //     int* h_new_edit_array = (int*)malloc(new_size * sizeof(int));
+
+        //     int idx = 0;
+        //     for (const auto& pair : index_edit_map) {
+        //         h_new_index_array[idx] = pair.first;
+        //         h_new_edit_array[idx] = pair.second;
+        //         idx++;
+        //     }
+
+        //     cudaMemcpy(d_index_array, h_new_index_array, new_size * sizeof(int), cudaMemcpyHostToDevice);
+        //     cudaMemcpy(d_edit_array, h_new_edit_array, new_size * sizeof(int), cudaMemcpyHostToDevice);
+
+        //     // 复制数组内容回设备栈
+        //     // copy_array_to_stack<<<1, 1>>>(d_index_array, d_edit_array, new_size);
+
+        //     // 等待GPU执行完成
+        //     cudaDeviceSynchronize();
+
+
+        //     // dim3 blockSize_e(256);
+    
+        //     dim3 gridSize_e((edit_count_temp + blockSize.x - 1) / blockSize.x);
+            // applyDeltaBuffer1<<<gridSize, blockSize>>>();
+            // initializeKernel1<<<gridSize, blockSize>>>(init_value);
             
             
-            fix_maxi_critical1<<<gridnum, blocknum>>>(1);
-            // cout<<"wanc"<<endl;
+            
             cudaDeviceSynchronize();
+            
+            // initializeKernel1<<<gridSize, blockSize>>>(init_value);
+            
             
             cudaEventRecord(stop, 0);
             cudaEventSynchronize(stop);
@@ -2758,22 +3911,30 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
             // 重新检查错误cp个数
             
             cudaStatus = cudaMemcpyToSymbol(count_f_max, &initialValue, sizeof(int));
-            // if (cudaStatus != cudaSuccess) {
-            //     std::cerr << "cudaMemcpyToSymbol failed4: " << cudaGetErrorString(cudaStatus) << std::endl;
-            // }
-            // int initialValue = 0;
+                if (cudaStatus != cudaSuccess) {
+            std::cerr << "cudaMemcpyToSymbol failed11: " << cudaGetErrorString(cudaStatus) << std::endl;
+        }
             cudaStatus = cudaMemcpyToSymbol(count_f_min, &initialValue, sizeof(int));
             
+                if (cudaStatus != cudaSuccess) {
+            std::cerr << "cudaMemcpyToSymbol failed11: " << cudaGetErrorString(cudaStatus) << std::endl;
+        }
 
-
-            // if (cudaStatus != cudaSuccess) {
-            //     std::cerr << "cudaMemcpyToSymbol failed5: " << cudaGetErrorString(cudaStatus) << std::endl;
-            // }
             
-            // std::cout << "Average Time Per Iteration = " << elapsedTime << " ms" << std::endl;
-            // cudaEventRecord(start, 0);
-
+            
+            // cudaMemcpyFromSymbol(&h_s, decp_data, num1*sizeof(double), cudaMemcpyDeviceToHost);
+            cudaDeviceSynchronize();
+            // cout<<"wanc"<<endl;
+            
+            
+            
+            // cudaMemcpyFromSymbol(&h_s, decp_data, num1*sizeof(double), cudaMemcpyDeviceToHost);
+            cudaDeviceSynchronize();
+            // std::cout<<"before: "<<h_s[88541]<<std::endl;
+            // clearStacksKernel<<<gridSize, blockSize>>>();
+            cudaDeviceSynchronize();
             iscriticle<<<gridSize, blockSize>>>();
+            
             // cudaEventRecord(stop, 0);
             // cudaEventSynchronize(stop);
 
@@ -2784,10 +3945,11 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
             // cudaEventRecord(start, 0);
             find_direction<<<gridSize,blockSize>>>();
             
+            
             // cudaEventRecord(stop, 0);
             // cudaEventSynchronize(stop);
             // cudaEventElapsedTime(&elapsedTime, start, stop);
-            // finddirection+=elapsedTime;
+            // finddirection1+=elapsedTime;
             // 计算这次迭代的时间并加到总时间上
             
             
@@ -2796,9 +3958,11 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
             cudaMemcpyFromSymbol(&host_count_f_min, count_f_min, sizeof(int), 0, cudaMemcpyDeviceToHost);
             // cout<<host_count_f_max<<", "<<host_count_f_min<<endl;
             cudaDeviceSynchronize();
-            
+            // cudaFree(d_deltaBuffer);
             // exit(0);
-        }
+            cnt+=1;
+    }
+
     // cudaEventRecord(stop, 0);
     // cudaEventSynchronize(stop);
     
@@ -2806,9 +3970,11 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
 
     initializeWithIndex<<<gridSize, blockSize>>>(num1,0);
     initializeWithIndex<<<gridSize, blockSize>>>(num1,1);
-    // dim3 blockSize1(1024);
+    // dim3 blockSize1(256);
     // dim3 gridSize1((num1 + blockSize1.x - 1) / blockSize1.x);
     // mappath;
+    cudaEventRecord(start, 0);
+    for(int i =0;i<1;i++){
     while(h_un_sign_as>0 or h_un_sign_ds>0){
         
         int zero = 0;
@@ -2824,6 +3990,12 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         
         
     }   
+    }
+    
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&elapsedTime, start, stop);
+    cout<<"100次mappath: "<<elapsedTime<<endl;
     
     h_un_sign_as = num1;
     h_un_sign_ds = num1;
@@ -2844,9 +4016,17 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         
     }
     
+    
+    cudaMemcpy(dec_label1->data(), dec_l, num1 * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(or_label1->data(), or_l, num1 * sizeof(int), cudaMemcpyDeviceToHost);
+    
+    saveVectorToBinFile(dec_label1, "dec_jet_"+std::to_string(bound)+".bin");
+    saveVectorToBinFile(or_label1, "or_jet_"+std::to_string(bound)+".bin");
+    
     cudaMemcpyToSymbol(count_p_max, &initialValue, sizeof(int));
     cudaMemcpyToSymbol(count_p_min, &initialValue, sizeof(int));
     get_wrong_index_path1<<<gridSize, blockSize>>>();
+
     int host_count_p_max;
     
     cudaStatus = cudaMemcpyFromSymbol(&host_count_p_max, count_p_max, sizeof(int), 0, cudaMemcpyDeviceToHost);
@@ -2861,27 +4041,136 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     
     while(host_count_p_min>0 or host_count_p_max>0 or host_count_f_min>0 or host_count_f_max>0){
         cout<<"path:"<<host_count_p_min<<", "<<host_count_p_max<<", "<<host_count_f_min<<", "<<host_count_f_max<<endl;
-        
-        
-        dim3 blockSize2(1024);
+        datatransfer = 0.0;
+        mappath_path = 0.0;
+        getfpath = 0.0;
+        fixtime_path = 0.0;
+        finddirection1 = 0.0;
+        getfcp = 0.0;
+        fixtime_cp = 0.0;
+        sub_cnt = 0;
+        total_cnt+=1;
+
+        initializeKernel1<<<gridSize, blockSize>>>(init_value);
+        dim3 blockSize2(256);
         dim3 gridSize2((host_count_p_max + blockSize2.x - 1) / blockSize2.x);
-        fixpath11<<<gridSize2, blockSize2>>>(0);
+
+
+        cudaEventRecord(start, 0);
+        fixpath11<<<gridSize2, blockSize2>>>(0 );
         cudaDeviceSynchronize();
 
-        dim3 blockSize3(1024);
+        
+        
+        cudaDeviceSynchronize();
+        
+        
+        
+        dim3 blockSize3(256);
         dim3 gridSize3((host_count_p_min + blockSize3.x - 1) / blockSize3.x);
         fixpath11<<<gridSize3, blockSize3>>>(1);
         cudaDeviceSynchronize();
-        
+
+
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&elapsedTime, start, stop);
+        fixtime_path+=elapsedTime;
+        // cudaMemcpyFromSymbol(&stack_temp, d_stacks, sizeof(LockFreeStack<double>));
+        // cudaMemcpyFromSymbol(&id_stack_temp, id_stacks, sizeof(LockFreeStack<int>));
+
+
+        //     int* d_size;
+        //     int h_size;
+        //     cudaMalloc(&d_size, sizeof(int));
+
+        //     // 复制栈的内容到主机
+        //     int* d_index_array;
+        //     double* d_edit_array;
+        //     // copy_stack_to_array<<<1, 1>>>(nullptr, nullptr, d_size);
+        //     cudaMemcpy(&h_size, d_size, sizeof(int), cudaMemcpyDeviceToHost);
+
+        //     // 分配主机和设备数组
+        //     cudaMalloc(&d_index_array, h_size * sizeof(int));
+        //     cudaMalloc(&d_edit_array, h_size * sizeof(int));
+        //     int* h_index_array = (int*)malloc(h_size * sizeof(int));
+        //     int* h_edit_array = (int*)malloc(h_size * sizeof(int));
+
+        //     // 复制设备栈内容到设备数组
+        //     // copy_stack_to_array<<<1, 1>>>(d_index_array, d_edit_array, d_size);
+        //     cudaMemcpy(h_index_array, d_index_array, h_size * sizeof(int), cudaMemcpyDeviceToHost);
+        //     cudaMemcpy(h_edit_array, d_edit_array, h_size * sizeof(int), cudaMemcpyDeviceToHost);
+
+        //     // 在主机上创建map并处理数据
+        //     std::unordered_map<int, int> index_edit_map;
+        //     for (int i = 0; i < h_size; ++i) {
+        //         int index = h_index_array[i];
+        //         int edit = h_edit_array[i];
+        //         if (index_edit_map.find(index) == index_edit_map.end() || index_edit_map[index] < edit) {
+        //             index_edit_map[index] = edit;
+        //         }
+        //     }
+
+        //     // 打印map内容
+        //     int edit_count_temp = index_edit_map.size();
+            
+        //     cudaMemcpyToSymbol(edit_count, &edit_count_temp, sizeof(int), 0, cudaMemcpyHostToDevice);
+        //     for (const auto& pair : index_edit_map) {
+        //         printf("Index: %d, Edit: %d\n", pair.first, pair.second);
+        //     }
+
+        //     // 将处理后的数据传回设备
+        //     int new_size = index_edit_map.size();
+        //     int* h_new_index_array = (int*)malloc(new_size * sizeof(int));
+        //     int* h_new_edit_array = (int*)malloc(new_size * sizeof(int));
+
+        //     int idx = 0;
+        //     for (const auto& pair : index_edit_map) {
+        //         h_new_index_array[idx] = pair.first;
+        //         h_new_edit_array[idx] = pair.second;
+        //         idx++;
+        //     }
+
+        //     cudaMemcpy(d_index_array, h_new_index_array, new_size * sizeof(int), cudaMemcpyHostToDevice);
+        //     cudaMemcpy(d_edit_array, h_new_edit_array, new_size * sizeof(int), cudaMemcpyHostToDevice);
+
+        //     // 复制数组内容回设备栈
+        //     // copy_array_to_stack<<<1, 1>>>(d_index_array, d_edit_array, new_size);
+
+        //     // 等待GPU执行完成
+        //     cudaDeviceSynchronize();
+            // dim3 blockSize_e(256);
+    
+        applyDeltaBuffer1<<<gridSize, blockSize>>>();
+        cudaDeviceSynchronize();
+        cudaEventRecord(start, 0);
+
+        // clearStacksKernel<<<gridSize, blockSize>>>();
+        cudaDeviceSynchronize();
+
+        cudaEventRecord(start, 0);
         find_direction<<<gridSize, blockSize>>>();
+        cudaDeviceSynchronize();
+
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&elapsedTime, start, stop);
+        finddirection1+=elapsedTime;
+
         cudaStatus = cudaMemcpyToSymbol(count_f_max, &initialValue, sizeof(int));
         
         cudaStatus = cudaMemcpyToSymbol(count_f_min, &initialValue, sizeof(int));
             
 
 
+        cudaEventRecord(start, 0);
         iscriticle<<<gridSize, blockSize>>>();
-        
+        cudaDeviceSynchronize();
+
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&elapsedTime, start, stop);
+        getfcp+=elapsedTime;
         
         cudaMemcpyFromSymbol(&host_count_f_max, count_f_max, sizeof(int), 0, cudaMemcpyDeviceToHost);
         
@@ -2890,21 +4179,28 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         while(host_count_f_max>0 or host_count_f_min>0){
         
             // cout<<host_count_f_max<<", "<<host_count_f_min<<endl;
-
+            sub_cnt+=1;
             
-            dim3 blockSize1(1024);
+            dim3 blockSize1(256);
             dim3 gridSize1((host_count_f_max + blockSize1.x - 1) / blockSize1.x);
             // cudaEventRecord(start, 0);
+            initializeKernel1<<<gridSize, blockSize>>>(init_value);
             cudaEventRecord(start, 0);
-            fix_maxi_critical1<<<gridSize1, blockSize1>>>(0);
             
+            fix_maxi_critical1<<<gridSize1, blockSize1>>>(0,cnt);
+            
+            cudaDeviceSynchronize();
+            
+            
+            cudaDeviceSynchronize();
             // cudaDeviceSynchronize();
-
-            dim3 blocknum(1024);
+            
+            
+            dim3 blocknum(256);
             dim3 gridnum((host_count_f_min + blocknum.x - 1) / blocknum.x);
             
             
-            fix_maxi_critical1<<<gridnum, blocknum>>>(1);
+            fix_maxi_critical1<<<gridnum, blocknum>>>(1,cnt);
             // cout<<"wanc"<<endl;
             cudaDeviceSynchronize();
             
@@ -2913,7 +4209,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
 
             // 计算这次迭代的时间并加到总时间上
             cudaEventElapsedTime(&elapsedTime, start, stop);
-            // fixtime_cp+=elapsedTime;
+            fixtime_cp+=elapsedTime;
             // 重新检查错误cp个数
             
             cudaStatus = cudaMemcpyToSymbol(count_f_max, &initialValue, sizeof(int));
@@ -2931,24 +4227,31 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
             
             // std::cout << "Average Time Per Iteration = " << elapsedTime << " ms" << std::endl;
             // cudaEventRecord(start, 0);
+            
 
-            iscriticle<<<gridSize, blockSize>>>();
-            // cudaEventRecord(stop, 0);
-            // cudaEventSynchronize(stop);
 
-            // 计算这次迭代的时间并加到总时间上
-            // cudaEventElapsedTime(&elapsedTime, start, stop);
-            // getfcp+=elapsedTime;
 
-            // cudaEventRecord(start, 0);
+            
+            
+            applyDeltaBuffer1<<<gridSize, blockSize>>>();
+            // clearStacksKernel<<<gridSize, blockSize>>>();
+
+            cudaEventRecord(start, 0);
             find_direction<<<gridSize,blockSize>>>();
             
-            // cudaEventRecord(stop, 0);
-            // cudaEventSynchronize(stop);
-            // cudaEventElapsedTime(&elapsedTime, start, stop);
-            // finddirection+=elapsedTime;
+            cudaEventRecord(stop, 0);
+            cudaEventSynchronize(stop);
+            cudaEventElapsedTime(&elapsedTime, start, stop);
+            finddirection1+=elapsedTime;
             // 计算这次迭代的时间并加到总时间上
-            
+            cudaEventRecord(start, 0);
+            iscriticle<<<gridSize, blockSize>>>();
+            cudaEventRecord(stop, 0);
+            cudaEventSynchronize(stop);
+
+            // 计算这次迭代的时间并加到总时间上
+            cudaEventElapsedTime(&elapsedTime, start, stop);
+            getfcp+=elapsedTime;
             
             cudaMemcpyFromSymbol(&host_count_f_max, count_f_max, sizeof(int), 0, cudaMemcpyDeviceToHost);
             
@@ -2964,6 +4267,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         
         h_un_sign_as = num1;
         h_un_sign_ds = num1;
+        cudaEventRecord(start, 0);
         while(h_un_sign_as>0 or h_un_sign_ds>0){
         
             int zero = 0;
@@ -2981,11 +4285,24 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
             
             
         } 
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&elapsedTime, start, stop);
+        mappath_path+=elapsedTime;
         
         cudaMemcpyToSymbol(count_p_max, &initialValue, sizeof(int));
         cudaMemcpyToSymbol(count_p_min, &initialValue, sizeof(int));
 
+        cudaEventRecord(start, 0);
         get_wrong_index_path1<<<gridSize, blockSize>>>();
+        
+        // 在主机上进行排序
+    
+
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&elapsedTime, start, stop);
+        getfpath+=elapsedTime;
 
         cudaStatus = cudaMemcpyFromSymbol(&host_count_p_max, count_p_max, sizeof(int), 0, cudaMemcpyDeviceToHost);
         if (cudaStatus != cudaSuccess) {
@@ -2998,8 +4315,14 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         cudaStatus = cudaMemcpyToSymbol(count_f_max, &initialValue, sizeof(int));
         cudaStatus = cudaMemcpyToSymbol(count_f_min, &initialValue, sizeof(int));
 
-
+        cudaEventRecord(start, 0);
         iscriticle<<<gridSize, blockSize>>>();
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime(&elapsedTime, start, stop);
+        getfcp+=elapsedTime;
+
+
         cudaStatus = cudaMemcpyFromSymbol(&host_count_f_max, count_f_max, sizeof(int), 0, cudaMemcpyDeviceToHost);
         if (cudaStatus != cudaSuccess) {
             std::cerr << "cudaMemcpyToSymbol failed11: " << cudaGetErrorString(cudaStatus) << std::endl;
@@ -3009,9 +4332,40 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
                 std::cerr << "cudaMemcpyToSymbol failed12: " << cudaGetErrorString(cudaStatus) << std::endl;
         }
 
-        
+        std::vector<float> temp;
+        temp.push_back(finddirection1);
+        temp.push_back(getfcp);
+        temp.push_back(fixtime_cp);
+        temp.push_back(mappath_path);
+        temp.push_back(getfpath);
+        temp.push_back(fixtime_path);
+        temp.push_back(sub_cnt);
+        time_counter.push_back(temp);
     
     }
+    std::ofstream outFilep("result/performance1_cuda_deterministic"+std::to_string(bound1)+"_"+".txt", std::ios::app);
+    // 检查文件是否成功打开
+    if (!outFilep) {
+        std::cerr << "Unable to open file for writing." << std::endl;
+        return; // 返回错误码
+    }
+    
+    int c1 = 0;  
+    for (const auto& row : time_counter) {
+        outFilep << "iteration: "<<c1<<": ";
+        for (size_t i = 0; i < row.size(); ++i) {
+            outFilep << row[i];
+            if (i != row.size() - 1) { // 不在行的末尾时添加逗号
+                outFilep << ", ";
+            }
+        }
+        // 每写完一行后换行
+        outFilep << std::endl;
+        c1+=1;
+    }
+    outFilep << "\n"<< std::endl;
+    outFilep.close();
+    
     // cout<<"出发"<<endl;
     cudaDeviceSynchronize();
     cudaEventRecord(stop, 0);
@@ -3019,13 +4373,13 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
 
     // 计算这次迭代的时间并加到总时间上
     cudaEventElapsedTime(&elapsedTime, start, stop);
-    finddirection+=elapsedTime;
+    finddirection1+=elapsedTime;
     cudaEventRecord(start, 0);
     cudaMemcpy(a->data(), temp, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(b->data(), temp1, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(c->data(), d_temp2, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(d->data(), d_temp3, num1 * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(decp_data1->data(), temp4, num1 * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(decp_data1->data(), temp4, num1 * sizeof(double), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
@@ -3050,6 +4404,8 @@ __global__ void copyDeviceVarToDeviceMem(int *deviceMem,int *deviceMem1) {
 }
 
 
+
+
 void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *decp_data1,float &datatransfer, float &finddirection, float &getfcp, float &fixtime_cp, int &cpite){
     auto total_start2 = std::chrono::high_resolution_clock::now();
     int num1;
@@ -3064,7 +4420,11 @@ void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *de
     
     cudaEventCreate(&stop);
     cudaEventRecord(start, 0);
-    
+    // memory for deltaBuffer
+    double* d_deltaBuffer;
+    cudaMalloc(&d_deltaBuffer, num1 * sizeof(double));
+    // initialization of deltaBuffer
+    cudaMemset(d_deltaBuffer, 0.0, num1 * sizeof(double));
     cudaError_t cudaStatus = cudaMalloc((void**)&temp5, num1 * sizeof(double));
     
     cudaStatus = cudaMemcpy(temp5, decp_data1->data(), num1 * sizeof(double), cudaMemcpyHostToDevice);
@@ -3116,7 +4476,7 @@ void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *de
     cudaEventElapsedTime(&elapsedTime, start, stop);
     datatransfer+=elapsedTime;
 
-    dim3 blockSize(1024);
+    dim3 blockSize(256);
     dim3 gridSize((num1 + blockSize.x - 1) / blockSize.x);
     cudaEventRecord(start, 0);
 
@@ -3144,7 +4504,7 @@ void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *de
     cudaEventSynchronize(stop);
     
     cudaEventElapsedTime(&elapsedTime, start, stop);
-    // cout<<"1000cigetfcp: "<<elapsedTime;
+    // cout<<"100cigetfcp: "<<elapsedTime;
     getfcp+=elapsedTime;
     
     
@@ -3164,19 +4524,19 @@ void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *de
         // cout<<host_count_f_max<<", "<<host_count_f_min<<endl;
 
         cpite+=1;
-        dim3 blockSize1(1024);
+        dim3 blockSize1(256);
         dim3 gridSize1((host_count_f_max + blockSize1.x - 1) / blockSize1.x);
         // cudaEventRecord(start, 0);
         cudaEventRecord(start, 0);
-        fix_maxi_critical1<<<gridSize1, blockSize1>>>(0);
+        // fix_maxi_critical1<<<gridSize1, blockSize1>>>(0,d_deltaBuffer,id_array);
         
         // cudaDeviceSynchronize();
 
-        dim3 blocknum(1024);
+        dim3 blocknum(256);
         dim3 gridnum((host_count_f_min + blocknum.x - 1) / blocknum.x);
         
         
-        fix_maxi_critical1<<<gridnum, blocknum>>>(1);
+        //fix_maxi_critical1<<<gridnum, blocknum>>>(1,d_deltaBuffer,id_array);
         // cout<<"wanc"<<endl;
         cudaDeviceSynchronize();
         
@@ -3236,7 +4596,7 @@ void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *de
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&elapsedTime, start, stop);
-    // finddirection+=elapsedTime;
+    // finddirection1+=elapsedTime;
     // cudaEventElapsedTime(&wholeTime, start1, stop);
     // cout<<"["<<totalElapsedTime/wholeTime<<", "<<totalElapsedTime_fcp/wholeTime<<", "<<totalElapsedTime_fd/wholeTime<<"],"<<endl;;
     // start2 = std::chrono::high_resolution_clock::now();
@@ -3253,6 +4613,7 @@ void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *de
     // cudaMemcpy(hostArray1, de_direction_ds, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(c->data(), hostArray, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(d->data(), hostArray1, num1 * sizeof(int), cudaMemcpyDeviceToHost);
+    //cudaMemcpy(decp_data1->data(), temp4, num1 * sizeof(double), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
@@ -3305,7 +4666,7 @@ void mappath1(std::vector<int> *label, std::vector<int> *direction_as, std::vect
     
     
     
-    dim3 blockSize1(1024);
+    dim3 blockSize1(256);
     dim3 gridSize1((num1 + blockSize1.x - 1) / blockSize1.x);
 
     float elapsedTime;
