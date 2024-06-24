@@ -52,7 +52,6 @@ __device__ int count_min;
 __device__ int count_f_max;
 __device__ int count_f_min;
 __device__ int count_p_max;
-__device__ int count_all_p;
 __device__ int count_p_min;
 __device__ int* maxi;
 
@@ -525,7 +524,7 @@ __global__ void iscriticle(){
         
 }
 
-__global__ void get_wrong_index_path1(int type=0){
+__global__ void get_wrong_index_path1(){
 
     
     int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -534,8 +533,8 @@ __global__ void get_wrong_index_path1(int type=0){
         
         return;
     }
-    if(type==0){
-        if (or_label[i * 2 + 1] != dec_label[i * 2 + 1]) {
+    
+    if (or_label[i * 2 + 1] != dec_label[i * 2 + 1]) {
         int idx_fp_max = atomicAdd(&count_p_max, 1);
         // printf("%d %d %d\n",i,or_label[i * 2 + 1],dec_label[i * 2 + 1]);
         all_p_max[idx_fp_max] = i;
@@ -544,14 +543,6 @@ __global__ void get_wrong_index_path1(int type=0){
     if (or_label[i * 2] != dec_label[i * 2]) {
         int idx_fp_min = atomicAdd(&count_p_min, 1);
         all_p_min[idx_fp_min] = i;
-        
-    }
-    }
-    
-    else{
-        if (or_label[i * 2 + 1] != dec_label[i * 2 + 1] || or_label[i * 2] != dec_label[i * 2]) {
-            atomicAdd(&count_all_p, 1);
-        }
         
     }
     
@@ -680,39 +671,7 @@ __device__ double atomicCASDouble(double* address, double val) {
     // 返回交换之前的旧值
     return __longlong_as_double(old_val_as_ull);
 }
-void saveVectorToBinFile(const std::vector<int>* vecPtr, const std::string& filename) {
-    if (vecPtr == nullptr) {
-        std::cerr << "输入的指针为空" << std::endl;
-        return;
-    }
 
-    // 打开文件输出流，以二进制模式
-    std::ofstream outfile(filename, std::ios::binary);
-    if (!outfile) {
-        std::cerr << "无法打开文件 " << filename << " 进行写入" << std::endl;
-        return;
-    }
-
-    // 获取向量的大小并写入文件
-    size_t size = vecPtr->size();
-    outfile.write(reinterpret_cast<const char*>(&size), sizeof(size));
-
-    // 处理并写入向量的数据
-    for (size_t i = 0; i < size; ++i) {
-        int value = (*vecPtr)[i];
-        if (value == -1) {
-            int index = static_cast<int>(i/2);
-            outfile.write(reinterpret_cast<const char*>(&index), sizeof(index));
-            
-        } else {
-            outfile.write(reinterpret_cast<const char*>(&value), sizeof(value));
-        }
-    }
-
-
-    // 关闭文件
-    outfile.close();
-}
 __device__ int swap(int index, double delta){
     int update_successful = 0;
     double oldValue = d_deltaBuffer[index];
@@ -3469,7 +3428,7 @@ __global__ void initializeWithIndex(int size, int type=0) {
     
 // }
 
-void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,std::vector<int>* dec_label1,std::vector<int>* or_label1, int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection, double &right){
+void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection){
     int* temp;
     
     int* temp1;
@@ -3716,31 +3675,11 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     // initializeKernel1<<<gridSize, blockSize>>>(init_value);
 
     
-    cudaEventRecord(start, 0);
-    for(int i =0;i<1;i++){
+
     find_direction<<<gridSize, blockSize>>>();
-    }
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&elapsedTime, start, stop);
-    cout<<"100次find_direction: "<<elapsedTime<<endl;
+    iscriticle<<<gridSize,blockSize>>>();
     
-    cudaEventRecord(start, 0);
-    for(int i =0;i<1;i++){
-        int initialValue = 0;
-        cudaStatus = cudaMemcpyToSymbol(count_f_max, &initialValue, sizeof(int));
-        // if (cudaStatus != cudaSuccess) {
-        //     std::cerr << "cudaMemcpyToSymbol failed4: " << cudaGetErrorString(cudaStatus) << std::endl;
-        // }
-        // int initialValue = 0;
-        cudaStatus = cudaMemcpyToSymbol(count_f_min, &initialValue, sizeof(int));
-        iscriticle<<<gridSize,blockSize>>>();
-    }
-    
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&elapsedTime, start, stop);
-    cout<<"100次getfcp: "<<elapsedTime<<endl;
+    cout<<"1000次finddirection: "<<elapsedTime<<endl;
     // double h_s[num1];
     int host_count_f_max;
     cudaStatus = cudaMemcpyFromSymbol(&host_count_f_max, count_f_max, sizeof(int), 0, cudaMemcpyDeviceToHost);
@@ -3762,7 +3701,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     
     
     
-    while(host_count_f_min>0 or host_count_f_min>0){
+    while(host_count_f_max>0 or host_count_f_min>0){
         
             
             // std::cout<<host_count_f_min<<","<<host_count_f_max<<std::endl;
@@ -3799,7 +3738,7 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
             
             
             // cudaStatus = cudaMemcpyToSymbol(all_max, &d_temp, sizeof(int*));
-            cudaEventRecord(start, 0);
+            
             // cudaMemcpy(h_all_max.data(), d_temp, num1 * sizeof(int),  cudaMemcpyDeviceToHost);
             fix_maxi_critical1<<<gridSize1, blockSize1>>>(0,cnt);
             
@@ -3810,10 +3749,6 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
             dim3 gridnum((host_count_f_min + blocknum.x - 1) / blocknum.x);
             fix_maxi_critical1<<<gridnum, blocknum>>>(1,cnt);
             applyDeltaBuffer1<<<gridSize, blockSize>>>();
-            cudaEventRecord(stop, 0);
-            cudaEventSynchronize(stop);
-            cudaEventElapsedTime(&elapsedTime, start, stop);
-            cout<<"1次fixfcp: "<<elapsedTime<<endl;
             
         //         fix_maxi_critical2<<<1,1>>>(0,i);
 
@@ -3982,8 +3917,6 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     // dim3 blockSize1(256);
     // dim3 gridSize1((num1 + blockSize1.x - 1) / blockSize1.x);
     // mappath;
-    cudaEventRecord(start, 0);
-    for(int i =0;i<1;i++){
     while(h_un_sign_as>0 or h_un_sign_ds>0){
         
         int zero = 0;
@@ -3999,12 +3932,6 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         
         
     }   
-    }
-    
-    cudaEventRecord(stop, 0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&elapsedTime, start, stop);
-    cout<<"100次mappath: "<<elapsedTime<<endl;
     
     h_un_sign_as = num1;
     h_un_sign_ds = num1;
@@ -4024,20 +3951,6 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
         
         
     }
-    
-    
-    cudaMemcpyToSymbol(count_all_p, &initialValue, sizeof(int));
-    int host_count_all_p;
-
-    get_wrong_index_path1<<<gridSize, blockSize>>>(1);
-    cudaStatus = cudaMemcpyFromSymbol(&host_count_all_p, count_all_p, sizeof(int), 0, cudaMemcpyDeviceToHost);
-    right = double(host_count_all_p)/double(num1);
-
-    cudaMemcpy(dec_label1->data(), dec_l, num1 * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(or_label1->data(), or_l, num1 * sizeof(int), cudaMemcpyDeviceToHost);
-    
-    // saveVectorToBinFile(dec_label1, "dec_jet_"+std::to_string(bound)+".bin");
-    // saveVectorToBinFile(or_label1, "or_jet_"+std::to_string(bound)+".bin");
     
     cudaMemcpyToSymbol(count_p_max, &initialValue, sizeof(int));
     cudaMemcpyToSymbol(count_p_min, &initialValue, sizeof(int));
@@ -4395,7 +4308,6 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     cudaMemcpy(b->data(), temp1, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(c->data(), d_temp2, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(d->data(), d_temp3, num1 * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy(decp_data1->data(), temp4, num1 * sizeof(double), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
@@ -4520,7 +4432,7 @@ void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *de
     cudaEventSynchronize(stop);
     
     cudaEventElapsedTime(&elapsedTime, start, stop);
-    // cout<<"100cigetfcp: "<<elapsedTime;
+    // cout<<"1000cigetfcp: "<<elapsedTime;
     getfcp+=elapsedTime;
     
     
@@ -4629,7 +4541,6 @@ void fix_process(std::vector<int> *c,std::vector<int> *d,std::vector<double> *de
     // cudaMemcpy(hostArray1, de_direction_ds, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(c->data(), hostArray, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(d->data(), hostArray1, num1 * sizeof(int), cudaMemcpyDeviceToHost);
-    //cudaMemcpy(decp_data1->data(), temp4, num1 * sizeof(double), cudaMemcpyDeviceToHost);
     cudaDeviceSynchronize();
     cudaEventRecord(stop, 0);
     cudaEventSynchronize(stop);
