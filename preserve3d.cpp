@@ -3681,6 +3681,7 @@
 #include <random>
 #include <iostream>
 #include <filesystem>
+#include <cstdio>
 // #include <vtkSmartPointer.h>
 // #include <vtkImageData.h>
 // #include <vtkIntArray.h>
@@ -3906,7 +3907,7 @@ double bound;
 
 std::vector<int> find_low(){
     std::vector<int> lowGradientIndices(size2, 0);
-    return lowGradientIndices;
+    // return lowGradientIndices;
     const double threshold = 1e-16; // 梯度阈值
     // 遍历三维数据计算梯度
     for (int i = 0; i < width; ++i) {
@@ -5987,7 +5988,7 @@ double get_wrong_index_path(){
 // extern __global__ void init_or_data1(int numElements);
 // extern void init_or_data(std::vector<int> *a, std::vector<int> *b,std::vector<int> *c, std::vector<int> *d, std::vector<double> *input_data,std::vector<double> *decp_data, int num);
 // extern int fix_process(std::vector<double>& decp_data);
-extern void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,std::vector<int> *dec_label1,std::vector<int> *or_label1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection);
+extern void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,std::vector<int> *dec_label1,std::vector<int> *or_label1,int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection,double &right);
 // extern void update_de_direction(std::vector<int> *c,std::vector<int> *d);
 extern void fix_process(std::vector<int> *c,std::vector<int> *d, std::vector<double> *decp_data1, float &datatransfer, float &finddirection, float &getfcp, float &fixtime_cp,int &cpite);
 extern void mappath1(std::vector<int> *label, std::vector<int> *direction_as, std::vector<int> *direction_ds, float &finddirection, float &mappath_path, float &datatransfer,int type=0);
@@ -6124,6 +6125,7 @@ int main(int argc, char** argv){
     double range = std::stod(argv[2]);
     std::string compressor_id = argv[3];
     int mode = std::stoi(argv[4]);
+    double right_labeled_ratio;
     double target_br;
     float datatransfer = 0.0;
     float mappath_path = 0.0;
@@ -6481,7 +6483,7 @@ int main(int argc, char** argv){
     double compressed_dataSize = fs::file_size(cpfilename);
     double br = (compressed_dataSize*8)/size2;
     start = std::chrono::high_resolution_clock::now();
-    init_inputdata(dev_a, dev_b, dev_c, dev_d, dev_e, dev_f, dev_m,dev_q,width, height, depth, dev_g, bound,datatransfer,finddirection);
+    init_inputdata(dev_a, dev_b, dev_c, dev_d, dev_e, dev_f, dev_m,dev_q,width, height, depth, dev_g, bound,datatransfer,finddirection, right_labeled_ratio);
     ends = std::chrono::high_resolution_clock::now();
     duration = ends - start;
     double additional_time = duration.count();
@@ -6494,12 +6496,13 @@ int main(int argc, char** argv){
         return 1; // 返回错误码
     }
 
-    outFilep << filename + "_" +compressor_id+"_" + std::to_string(range) + ":" << " compression_time:" <<compression_time<<" additional_time:" <<additional_time <<" ratio:"<<additional_time/(additional_time+compression_time)<< std::endl;
+    outFilep << filename + "_" +compressor_id+"_" + std::to_string(range) + ":" << "compression_time:" <<compression_time<<" additional_time:" <<additional_time <<"ratio:"<<additional_time/(additional_time+compression_time)<< std::endl;
     // finddirection:0, getfcp:1,  mappath2, fixcp:3
     
     // outFilep << std::to_string(number_of_thread)<<":" << std::endl;
     
-    
+    outFilep << "\n"<< std::endl;
+    outFilep.close();
     
     // return 0;
     // std::ofstream outFile11("max_label"+filename+std::to_string(bound)+".txt");
@@ -6653,6 +6656,7 @@ int main(int argc, char** argv){
         file.write(reinterpret_cast<const char*>(diffs.data()), diffs.size() * sizeof(int));
     }
     file.close();
+
     command = "zstd -f " + indexfilename;
     std::cout << "Executing command: " << command << std::endl;
     result = std::system(command.c_str());
@@ -6692,15 +6696,7 @@ int main(int argc, char** argv){
     std::cout << std::setprecision(17)<<"CR: "<<original_dataSize/compressed_dataSize << std::endl;
     std::cout << std::setprecision(17)<<"OBR: "<<bitRate << std::endl;
     std::cout << std::setprecision(17)<<"BR: "<< (compressed_dataSize*8)/size2 << std::endl;
-    outFilep <<  "original_compressed_size:" <<compressed_dataSize<< " additional_size:" <<compressed_editSize+compressed_indexSize<<" ratio:"<<(compressed_editSize+compressed_indexSize)/compressed_dataSize<< std::endl;
-    outFilep<< std::setprecision(17)<< "OCR: "<<overall_ratio << " CR: "<<original_dataSize/compressed_dataSize << " OBR: "<<bitRate << " BR: "<< (compressed_dataSize*8)/size2 << std::endl;
-    // finddirection:0, getfcp:1,  mappath2, fixcp:3
     
-    // outFilep << std::to_string(number_of_thread)<<":" << std::endl;
-    
-    outFilep << "\n"<< std::endl;
-    outFilep.close();
-    exit(0);
     
     
 
@@ -6711,36 +6707,114 @@ int main(int argc, char** argv){
     // cout<<"right: "<<right_labeled_ratio<<endl;
     cout<<"relative range: "<<range<<endl;
     
-    // std::ofstream outFile3("../result/result_"+filename+"_"+compressor_id+"tmp3_detailed.txt", std::ios::app);
+    std::ofstream outFile3("./result/result_"+filename+"_"+compressor_id+"tmp3_detailed.txt", std::ios::app);
 
-    // // 检查文件是否成功打开
-    // if (!outFile3) {
-    //     std::cerr << "Unable to open file for writing." << std::endl;
-    //     return 1; // 返回错误码
-    // }
+    // 检查文件是否成功打开
+    if (!outFile3) {
+        std::cerr << "Unable to open file for writing." << std::endl;
+        return 1; // 返回错误码
+    }
 
     
-    // outFile3 << std::to_string(bound)<<":" << std::endl;
-    // outFile3 << std::setprecision(17)<< "related_error: "<<range << std::endl;
-    // outFile3 << std::setprecision(17)<< "OCR: "<<overall_ratio << std::endl;
-    // outFile3 << std::setprecision(17)<<"CR: "<<original_dataSize/compressed_dataSize << std::endl;
-    // outFile3 << std::setprecision(17)<<"OBR: "<<bitRate << std::endl;
-    // outFile3 << std::setprecision(17)<<"BR: "<< (compressed_dataSize*8)/size2 << std::endl;
-    // outFile3 << std::setprecision(17)<<"psnr: "<<psnr << std::endl;
-    // outFile3 << std::setprecision(17)<<"fixed_psnr: "<<fixed_psnr << std::endl;
+    outFile3 << std::to_string(bound)<<":" << std::endl;
+    outFile3 << std::setprecision(17)<< "related_error: "<<range << std::endl;
+    outFile3 << std::setprecision(17)<< "OCR: "<<overall_ratio << std::endl;
+    outFile3 << std::setprecision(17)<<"CR: "<<original_dataSize/compressed_dataSize << std::endl;
+    outFile3 << std::setprecision(17)<<"OBR: "<<bitRate << std::endl;
+    outFile3 << std::setprecision(17)<<"BR: "<< (compressed_dataSize*8)/size2 << std::endl;
+    outFile3 << std::setprecision(17)<<"psnr: "<<psnr << std::endl;
+    outFile3 << std::setprecision(17)<<"fixed_psnr: "<<fixed_psnr << std::endl;
 
-    // outFile3 << std::setprecision(17)<<"right_labeled_ratio: "<<right_labeled_ratio << std::endl;
-    // outFile3 << std::setprecision(17)<<"edit_ratio: "<<ratio << std::endl;
-    // outFile3 << std::setprecision(17)<<"relative: "<<range << std::endl;
-    // outFile3 << "\n" << std::endl;
-    // // 关闭文件
-    // outFile3.close();
+    outFile3 << std::setprecision(17)<<"right_labeled_ratio: "<<1-right_labeled_ratio << std::endl;
+    outFile3 << std::setprecision(17)<<"edit_ratio: "<<ratio << std::endl;
+    outFile3 << std::setprecision(17)<<"relative: "<<range << std::endl;
+    outFile3 << "\n" << std::endl;
+    // 关闭文件
+    outFile3.close();
 
-    // std::cout << "Variables have been appended to output.txt" << std::endl;
+    std::cout << "Variables have been appended to output.txt" << std::endl;
 
-    // cout<<overall_ratio * bitRate<<endl;
-    // cout<<overall_ratio<<","<<bitRate<<endl;
+    cout<<overall_ratio * bitRate<<endl;
+    cout<<overall_ratio<<","<<bitRate<<endl;
 
+    std::string rm_command = "rm -f " + fix_path;
+
+    // 执行删除文件的命令
+    result = system(rm_command.c_str());
+
+    // 检查删除操作的结果
+    if (result == 0) {
+        std::cout << "File deleted successfully." << std::endl;
+    } else {
+        std::cerr << "Error deleting file." << std::endl;
+    }
+
+    rm_command = "rm -f " + cpfilename;
+    result = system(rm_command.c_str());
+
+    // 检查删除操作的结果
+    if (result == 0) {
+        std::cout << "File deleted successfully." << std::endl;
+    } else {
+        std::cerr << "Error deleting file." << std::endl;
+    }
+
+    rm_command = "rm -f " + decpfilename;
+    result = system(rm_command.c_str());
+
+    // 检查删除操作的结果
+    if (result == 0) {
+        std::cout << "File deleted successfully." << std::endl;
+    } else {
+        std::cerr << "Error deleting file." << std::endl;
+    }
+
+    rm_command = "rm -f " + indexfilename;
+    result = system(rm_command.c_str());
+
+    // 检查删除操作的结果
+    if (result == 0) {
+        std::cout << "File deleted successfully." << std::endl;
+    } else {
+        std::cerr << "Error deleting file." << std::endl;
+    }
+
+    rm_command = "rm -f " + editsfilename;
+    result = system(rm_command.c_str());
+
+    // 检查删除操作的结果
+    if (result == 0) {
+        std::cout << "File deleted successfully." << std::endl;
+    } else {
+        std::cerr << "Error deleting file." << std::endl;
+    }
+
+    rm_command = "rm -f " + compressedindex;
+    result = system(rm_command.c_str());
+
+    // 检查删除操作的结果
+    if (result == 0) {
+        std::cout << "File deleted successfully." << std::endl;
+    } else {
+        std::cerr << "Error deleting file." << std::endl;
+    }
+
+    rm_command = "rm -f " + compressededits;
+    result = system(rm_command.c_str());
+
+    // 检查删除操作的结果
+    if (result == 0) {
+        std::cout << "File deleted successfully." << std::endl;
+    } else {
+        std::cerr << "Error deleting file." << std::endl;
+    }
+
+    // std::string indexfilename = "data"+filename+".bin";
+    // std::string editsfilename = "data_edits"+filename+".bin";
+    // std::string compressedindex = "data"+filename+".bin.zst";
+    // std::string compressededits = "data_edits"+filename+".bin.zst";
+
+        // 尝试删除文件
     
 
     

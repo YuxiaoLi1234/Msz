@@ -52,6 +52,7 @@ __device__ int count_min;
 __device__ int count_f_max;
 __device__ int count_f_min;
 __device__ int count_p_max;
+__device__ int count_all_p;
 __device__ int count_p_min;
 __device__ int* maxi;
 
@@ -524,7 +525,7 @@ __global__ void iscriticle(){
         
 }
 
-__global__ void get_wrong_index_path1(){
+__global__ void get_wrong_index_path1(int type=0){
 
     
     int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -533,8 +534,8 @@ __global__ void get_wrong_index_path1(){
         
         return;
     }
-    
-    if (or_label[i * 2 + 1] != dec_label[i * 2 + 1]) {
+    if(type==0){
+        if (or_label[i * 2 + 1] != dec_label[i * 2 + 1]) {
         int idx_fp_max = atomicAdd(&count_p_max, 1);
         // printf("%d %d %d\n",i,or_label[i * 2 + 1],dec_label[i * 2 + 1]);
         all_p_max[idx_fp_max] = i;
@@ -543,6 +544,14 @@ __global__ void get_wrong_index_path1(){
     if (or_label[i * 2] != dec_label[i * 2]) {
         int idx_fp_min = atomicAdd(&count_p_min, 1);
         all_p_min[idx_fp_min] = i;
+        
+    }
+    }
+    
+    else{
+        if (or_label[i * 2 + 1] != dec_label[i * 2 + 1] || or_label[i * 2] != dec_label[i * 2]) {
+            atomicAdd(&count_all_p, 1);
+        }
         
     }
     
@@ -3460,7 +3469,7 @@ __global__ void initializeWithIndex(int size, int type=0) {
     
 // }
 
-void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,std::vector<int>* dec_label1,std::vector<int>* or_label1, int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection){
+void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,std::vector<int> *d,std::vector<double> *input_data1,std::vector<double> *decp_data1,std::vector<int>* dec_label1,std::vector<int>* or_label1, int width1, int height1, int depth1, std::vector<int> *low,double bound1,float &datatransfer,float &finddirection, double &right){
     int* temp;
     
     int* temp1;
@@ -4017,6 +4026,13 @@ void init_inputdata(std::vector<int> *a,std::vector<int> *b,std::vector<int> *c,
     }
     
     
+    cudaMemcpyToSymbol(count_all_p, &initialValue, sizeof(int));
+    int host_count_all_p;
+
+    get_wrong_index_path1<<<gridSize, blockSize>>>(1);
+    cudaStatus = cudaMemcpyFromSymbol(&host_count_all_p, count_all_p, sizeof(int), 0, cudaMemcpyDeviceToHost);
+    right = double(host_count_all_p)/double(num1);
+
     cudaMemcpy(dec_label1->data(), dec_l, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(or_label1->data(), or_l, num1 * sizeof(int), cudaMemcpyDeviceToHost);
     
